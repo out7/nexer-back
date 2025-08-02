@@ -1,0 +1,19 @@
+enum ReferralStatus {
+  inactive
+  trial
+  purchased
+}
+
+model Referral {
+  id                 String         @id @default(uuid())
+  referrerId         String         @map("referrer_id")
+  referredCustomerId String         @unique @map("referred_customer_id")
+  status             ReferralStatus @default(inactive)
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  referrer         Customer @relation("ReferralsGiven", fields: [referrerId], references: [id])
+  referredCustomer Customer @relation("ReferralReceived", fields: [referredCustomerId], references: [id])
+
+  @@map("referral")
+}

@@ -1,0 +1,28 @@
+enum SubscriptionStatus {
+  active
+  expired
+  none
+}
+
+enum SubscriptionSource {
+  paid
+  bonus
+  trial
+}
+
+model CustomerSubscription {
+  id              String              @id @default(uuid())
+  customerId      String              @unique @map("customer_id")
+  status          SubscriptionStatus  @default(none)
+  startDate       DateTime?           @map("start_date")
+  endDate         DateTime?           @map("end_date")
+  createdVia      SubscriptionSource? @map("created_via")
+  subscriptionUrl String?             @map("subscription_url")
+  trialActivated  Boolean             @default(false) @map("trial_activated")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@map("customer_subscription")
+}

@@ -1,0 +1,30 @@
+enum PaymentCurrency {
+  stars
+  rub
+  usd
+}
+
+enum PaymentMethod {
+  telegram_stars
+  tribute
+}
+
+model Payment {
+  id         String          @id @default(uuid())
+  customerId String          @map("customer_id")
+  amount     Int
+  currency   PaymentCurrency @map("currency")
+  method     PaymentMethod   @map("method")
+
+  referrerId               String?   @map("referrer_id")
+  referralBonusDays        Int?      @map("referral_bonus_days")
+  referralBonusProcessedAt DateTime? @map("referral_bonus_processed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  customer Customer  @relation("CustomerPayments", fields: [customerId], references: [id])
+  referrer Customer? @relation("ReferrerPayments", fields: [referrerId], references: [id])
+
+  @@map("payment")
+}

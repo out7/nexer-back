@@ -1,0 +1,25 @@
+model Customer {
+  id           String     @id @default(uuid())
+  telegramId   BigInt     @unique @map("telegram_id")
+  username     String?    @map("username")
+  language     String     @map("language") @db.Char(2)
+  referredById String?    @map("referred_by_id")
+  referredBy   Customer?  @relation("Referrals", fields: [referredById], references: [id])
+  referrals    Customer[] @relation("Referrals")
+
+  referralAsReferee Referral?  @relation("ReferralReceived")
+  referralsGiven    Referral[] @relation("ReferralsGiven")
+
+  customerSubscription CustomerSubscription? @relation
+
+  payments      Payment[] @relation("CustomerPayments")
+  referredSales Payment[] @relation("ReferrerPayments")
+
+  activityLogs ActivityLog[]
+
+  unclaimedBonusDays Int      @default(0) @map("unclaimed_bonus_days")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("customer")
+}

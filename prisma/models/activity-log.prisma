@@ -1,0 +1,20 @@
+enum ActivityLogType {
+  purchased
+  subscription_extended
+  bonus_claimed
+  trial_started
+  referral_bonus_added
+}
+
+model ActivityLog {
+  id         String          @id @default(uuid())
+  customerId String          @map("customer_id")
+  type       ActivityLogType @map("type")
+  meta       Json            @map("meta")
+  createdAt  DateTime        @default(now()) @map("created_at")
+
+  // Relations
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@map("activity_log")
+}
