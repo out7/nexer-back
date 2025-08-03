@@ -30,7 +30,11 @@ export class CustomerController {
 
   @UseGuards(JwtAuthGuard)
   @Post('trial')
-  @ApiResponse({ status: 201, description: 'Trial activated' })
+  @ApiResponse({
+    status: 201,
+    description: 'Trial activated',
+    type: CustomerResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Trial already used' })
   async activateTrial(@Request() req) {
     const customerUser = req.user as { telegramId: string };
