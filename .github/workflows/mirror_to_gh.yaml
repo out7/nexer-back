@@ -10,13 +10,13 @@ jobs:
   mirror:
     runs-on: ubuntu-cloud-runner
     permissions:
-      contents: write # Требуется для force push
+      contents: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Полная история коммитов
+          fetch-depth: 0
 
       - name: Configure Git
         run: |
