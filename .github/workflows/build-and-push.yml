@@ -57,8 +57,6 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            out7/nexer-back:latest
-            out7/nexer-back:${{github.ref_name}}
             ghcr.io/out7/nexer-back:latest
             ghcr.io/out7/nexer-back:${{github.ref_name}}
 
