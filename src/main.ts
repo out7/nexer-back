@@ -1,3 +1,4 @@
+import { setupSwagger } from '@/utils/swagger.util';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -13,6 +14,11 @@ async function bootstrap() {
       whitelist: true,
     }),
   );
+
+  setupSwagger(app);
+
+  app.enableShutdownHooks();
+
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
