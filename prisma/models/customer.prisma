@@ -3,6 +3,7 @@ model Customer {
   telegramId   BigInt     @unique @map("telegram_id")
   username     String?    @map("username")
   language     String     @map("language") @db.Char(2)
+  refreshToken String?    @map("refresh_token")
   referredById String?    @map("referred_by_id")
   referredBy   Customer?  @relation("Referrals", fields: [referredById], references: [id])
   referrals    Customer[] @relation("Referrals")

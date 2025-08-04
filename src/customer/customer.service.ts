@@ -44,9 +44,9 @@ export class CustomerService {
     return formatTelegramId(customer);
   }
 
-  async findOneByTelegramId(tgId: string) {
+  async findOneByTelegramId(telegramId: string) {
     const user = await this.prisma.customer.findUnique({
-      where: { telegramId: BigInt(tgId) },
+      where: { telegramId: BigInt(telegramId) },
     });
 
     if (!user) {
@@ -54,6 +54,19 @@ export class CustomerService {
     }
 
     return formatTelegramId(user);
+  }
+
+  async updateHashedRefreshToken(telegramId: string, hashedRT: string) {
+    const customer = await this.prisma.customer.update({
+      where: { telegramId: BigInt(telegramId) },
+      data: { refreshToken: hashedRT },
+    });
+
+    if (!customer) {
+      return null;
+    }
+
+    return formatTelegramId(customer);
   }
 
   async activateTrial(telegramId: string) {

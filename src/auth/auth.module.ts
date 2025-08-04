@@ -1,3 +1,4 @@
+import { RefreshStrategy } from '@/auth/strategies/refresh-token.strategy';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
@@ -19,6 +20,6 @@ import { TelegramStrategy } from './strategies/telegram.strategy';
     CustomerModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, TelegramStrategy, JwtStrategy],
+  providers: [AuthService, TelegramStrategy, JwtStrategy, RefreshStrategy],
 })
 export class AuthModule {}

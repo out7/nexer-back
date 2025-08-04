@@ -1,3 +1,4 @@
+import { AuthTokensDto } from '@/auth/dto/auth-tokens.dto';
 import {
   Injectable,
   InternalServerErrorException,
@@ -6,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { isValid, parse } from '@telegram-apps/init-data-node';
+import { hash, verify } from 'argon2';
 import { CustomerService } from '../customer/customer.service';
 import { AuthDataDto } from './dto/auth-data.dto';
 import { AuthJwtPayload } from './types/auth-jwt-payload';
@@ -18,7 +20,7 @@ export class AuthService {
     private readonly customerService: CustomerService,
   ) {}
 
-  async authUser(authDataDto: AuthDataDto) {
+  async authUser(authDataDto: AuthDataDto): Promise<AuthTokensDto> {
     const initData = parse(authDataDto.data);
     const customer = await this.customerService.findOrCreate(initData);
 
@@ -31,15 +33,14 @@ export class AuthService {
     const { accessToken, refreshToken } = await this.generateTokens(
       customer.telegramId.toString(),
     );
-    // const hashedRT = await hash(refreshToken);
+    const hashedRT = await hash(refreshToken);
 
-    // await this.customerService.updateHashedRefreshToken(
-    //   customer.telegramId,
-    //   hashedRT,
-    // );
+    await this.customerService.updateHashedRefreshToken(
+      customer.telegramId,
+      hashedRT,
+    );
 
     return {
-      telegramId: customer.telegramId,
       accessToken: accessToken,
       refreshToken: refreshToken,
     };
@@ -57,8 +58,8 @@ export class AuthService {
     );
   }
 
-  private async generateTokens(tgId: string) {
-    const payload: AuthJwtPayload = { sub: tgId };
+  private async generateTokens(telegramId: string) {
+    const payload: AuthJwtPayload = { sub: telegramId };
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload),
       this.jwtService.signAsync(payload, {
@@ -78,6 +79,34 @@ export class AuthService {
   async validateJwtUser(telegramId: string) {
     const customer = await this.customerService.findOneByTelegramId(telegramId);
     if (!customer) throw new UnauthorizedException('Customer not found!');
+    const currentUser = { telegramId: customer.telegramId };
+    return currentUser;
+  }
+
+  async refreshToken(telegramId: string): Promise<AuthTokensDto> {
+    const { accessToken, refreshToken } = await this.generateTokens(telegramId);
+
+    const hashedRT = await hash(refreshToken);
+
+    await this.customerService.updateHashedRefreshToken(telegramId, hashedRT);
+
+    return {
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+    };
+  }
+
+  async validateRefreshToken(telegramId: string, refreshToken: string) {
+    const customer = await this.customerService.findOneByTelegramId(telegramId);
+    if (!customer) throw new UnauthorizedException('Customer not found!');
+    const refreshTokenMatched = await verify(
+      customer.refreshToken,
+      refreshToken,
+    );
+
+    if (!refreshTokenMatched)
+      throw new UnauthorizedException('Invalid Refresh Token!');
+
     const currentUser = { telegramId: customer.telegramId };
     return currentUser;
   }
