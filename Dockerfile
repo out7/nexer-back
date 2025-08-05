@@ -15,7 +15,6 @@ RUN cd /temp/prod && bun ci --production && bunx prisma generate
 FROM base AS prerelease
 COPY --from=install /temp/dev/node_modules node_modules
 COPY . .
-RUN ls -la
 
 ENV NODE_ENV=production
 RUN bun run build
@@ -28,6 +27,5 @@ COPY --from=prerelease /usr/src/app/package.json .
 
 USER bun
 EXPOSE 3000/tcp
-
 
 ENTRYPOINT [ "bun", "run", "dist/main.js" ]

@@ -17,3 +17,4 @@ helm-charts
 coverage*
 .github
 .gitverse
+tsconfig.build.tsbuildinfo
