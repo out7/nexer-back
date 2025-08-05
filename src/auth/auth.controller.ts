@@ -1,5 +1,6 @@
 import { RefreshTokenDto } from '@/auth/dto/refresh-token.dto';
 import { RefreshAuthGuard } from '@/auth/guards/refresh-auth.guard';
+import { serialize } from '@/common/helpers/serialize';
 import {
   Body,
   Controller,
@@ -32,18 +33,22 @@ export class AuthController {
     summary: 'Authorization via TMA',
     description: 'Authorizes the user and returns access tokens.',
   })
-  @ApiOkResponse({ type: AuthTokensDto })
+  @ApiOkResponse({ description: 'Tokens issued', type: AuthTokensDto })
   @ApiBadRequestResponse({ description: 'Telegram initData is missing' })
   @ApiUnauthorizedResponse({ description: 'Invalid Telegram initData' })
   @ApiInternalServerErrorResponse({
     description: 'Failed to find or create user',
   })
-  @ApiBody({ type: AuthDataDto })
+  @ApiBody({
+    description: 'Request body for TMA authorization',
+    type: AuthDataDto,
+  })
   @UseGuards(TelegramAuthGuard)
   @Post('tma')
   @HttpCode(HttpStatus.OK)
-  authUser(@Body() authDataDto: AuthDataDto) {
-    return this.authService.authUser(authDataDto);
+  async authUser(@Body() authDataDto: AuthDataDto) {
+    const tokens = await this.authService.authUser(authDataDto);
+    return serialize(AuthTokensDto, tokens);
   }
 
   @ApiOperation({
@@ -55,12 +60,13 @@ export class AuthController {
     description: 'Request body for token refresh',
     type: RefreshTokenDto,
   })
-  @ApiOkResponse({ type: AuthTokensDto })
+  @ApiOkResponse({ description: 'Tokens refreshed', type: AuthTokensDto })
   @ApiBadRequestResponse({ description: 'Invalid refresh token format' })
   @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
   @UseGuards(RefreshAuthGuard)
   @Post('refresh')
-  refreshToken(@Request() req) {
-    return this.authService.refreshToken(req.user.telegramId);
+  async refreshToken(@Request() req) {
+    const tokens = await this.authService.refreshToken(req.user.telegramId);
+    return serialize(AuthTokensDto, tokens);
   }
 }

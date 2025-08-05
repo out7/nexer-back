@@ -17,6 +17,8 @@ async function bootstrap() {
     }),
   );
 
+  app.enableCors();
+
   setupSwagger(app);
 
   app.enableShutdownHooks();
