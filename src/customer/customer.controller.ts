@@ -1,5 +1,10 @@
 import { Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiSecurity } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiResponse,
+  ApiSecurity,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { serialize } from '../common/helpers/serialize';
 import { CustomerService } from './customer.service';
@@ -28,6 +33,7 @@ export class CustomerController {
     return serialize(CustomerResponseDto, customer);
   }
 
+  @ApiSecurity('bearer')
   @UseGuards(JwtAuthGuard)
   @Post('trial')
   @ApiResponse({
@@ -36,6 +42,7 @@ export class CustomerController {
     type: CustomerResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Trial already used' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   async activateTrial(@Request() req) {
     const customerUser = req.user as { telegramId: string };
     const customer = await this.customerService.activateTrial(
