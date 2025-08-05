@@ -28,8 +28,8 @@ export class CustomerController {
   @ApiSecurity('bearer')
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getProfile(@Request() req) {
-    const customer = this.customerService.getProfile(req.user.telegramId);
+  async getProfile(@Request() req) {
+    const customer = await this.customerService.getProfile(req.user.telegramId);
     return serialize(CustomerResponseDto, customer);
   }
 

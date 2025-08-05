@@ -39,6 +39,7 @@ export class CustomerService {
   async getProfile(telegramId: string) {
     const customer = await this.prisma.customer.findUnique({
       where: { telegramId: BigInt(telegramId) },
+      include: { customerSubscription: true },
     });
 
     return formatTelegramId(customer);
