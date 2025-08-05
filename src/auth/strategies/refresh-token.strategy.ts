@@ -22,7 +22,6 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh-jwt') {
   }
 
   validate(req: Request, payload: AuthJwtPayload) {
-    console.log('validate refresh token');
     const telegramId = payload.sub;
     const refreshToken = req.body.refreshToken;
 
