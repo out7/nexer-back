@@ -6,6 +6,7 @@ import {
   Controller,
   Headers,
   HttpCode,
+  Logger,
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -20,6 +21,8 @@ import {
 @ApiTags('Webhook')
 @Controller('webhook')
 export class WebhookController {
+  private readonly logger = new Logger(WebhookController.name);
+
   constructor(private readonly webhookService: WebhookService) {}
 
   @Post('trbt')
@@ -56,6 +59,7 @@ export class WebhookController {
         await this.webhookService.processTrbtCancelledSubscription(body);
         break;
       default:
+        this.logger.error('Unknown webhook event type', body);
         throw new BadRequestException('Unknown webhook event type');
     }
 
