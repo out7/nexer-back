@@ -20,6 +20,7 @@ export class WebhookController {
   ): Promise<{ status: string }> {
     console.log(signature, body);
     const isValid = this.webhookService.verifyTrbtSignature(signature, body);
+    console.log('isValid', isValid);
     if (!isValid) throw new UnauthorizedException('Invalid signature');
     return { status: 'ok' };
   }
