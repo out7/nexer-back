@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Headers,
+  HttpCode,
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ export class WebhookController {
   constructor(private readonly webhookService: WebhookService) {}
 
   @Post('new-subscription')
+  @HttpCode(200)
   async handleNewSubscription(
     @Headers('trbt-signature') signature: string,
     @Body() body: any,
@@ -25,3 +27,5 @@ export class WebhookController {
     return { status: 'ok' };
   }
 }
+// http://localhost:4444/api/v1.0/webhook/new-subscription
+// https://miniapp.awbait.com/api/v1.0/webhook/new-subscription
