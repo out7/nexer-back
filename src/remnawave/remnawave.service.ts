@@ -23,12 +23,9 @@ export class RemnawaveService {
     });
   }
 
-  public async createTrialSubscription(
+  async findUserByTelegramId(
     telegramId: string,
-    newEnd: Date,
-  ): Promise<UpdateUserCommand.Response> {
-    let user: GetUserByTelegramIdCommand.Response['response'][0] | undefined;
-
+  ): Promise<GetUserByTelegramIdCommand.Response['response'][0] | null> {
     try {
       const userRaw = await firstValueFrom(
         this.httpService.request<GetUserByTelegramIdCommand.Response>({
@@ -36,13 +33,20 @@ export class RemnawaveService {
           url: GetUserByTelegramIdCommand.url(telegramId),
         }),
       );
-
-      user = userRaw.data.response[0];
+      const user = userRaw.data.response[0];
+      return user || null;
     } catch (err) {
-      if (err?.response?.status !== 404) {
-        throw err;
+      if (err?.response?.status === 404) {
+        return null;
       }
+      throw new Error(
+        `Failed to find user by Telegram ID (${telegramId}): ${err.message || err}`,
+      );
     }
+  }
+
+  async activateVpnAccess(telegramId: string, ExpirationDate: Date) {
+    const user = await this.findUserByTelegramId(telegramId);
 
     if (user) {
       const updatedUserRaw = await firstValueFrom(
@@ -52,13 +56,14 @@ export class RemnawaveService {
           data: {
             uuid: user.uuid,
             status: 'ACTIVE',
-            expireAt: newEnd,
+            expireAt: ExpirationDate,
           },
         }),
       );
 
       return updatedUserRaw.data;
     }
+
     const createdUserRaw = await firstValueFrom(
       this.httpService.request<CreateUserCommand.Response>({
         method: CreateUserCommand.endpointDetails.REQUEST_METHOD,
@@ -67,38 +72,11 @@ export class RemnawaveService {
           username: `customer-${telegramId}`,
           telegramId: Number(telegramId),
           status: 'ACTIVE',
-          expireAt: newEnd,
+          expireAt: ExpirationDate,
         },
       }),
     );
 
     return createdUserRaw.data;
-  }
-
-  public async getCustomer() {
-    // const response = await this.httpService.post(
-    //   `https://api.remnawave.com/v1/customers/${customerId}`,
-    // );
-
-    // CreateUserCommand.ResponseSchema
-    // CreateUserCommand.RequestSchema
-
-    this.logger.log('asd');
-
-    const response = await firstValueFrom(
-      this.httpService.request({
-        method: CreateUserCommand.endpointDetails.REQUEST_METHOD,
-        url: CreateUserCommand.url,
-        data: {
-          username: '111112',
-          status: 'DISABLED',
-          expireAt: new Date(Date.now() + 1000),
-        },
-      }),
-    );
-
-    this.logger.log(response.status, response.data, response.statusText);
-
-    return response;
   }
 }

@@ -8,6 +8,7 @@ import { TariffModule } from './tariff/tariff.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { WebhookModule } from './webhook/webhook.module';
+import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { WebhookModule } from './webhook/webhook.module';
     TelegramModule,
     InvoiceModule,
     WebhookModule,
+    SubscriptionModule,
   ],
 })
 export class AppModule {}

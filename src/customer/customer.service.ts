@@ -1,3 +1,4 @@
+import { SubscriptionService } from '@/subscription/subscription.service';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { InitData } from '@telegram-apps/init-data-node';
@@ -11,6 +12,7 @@ export class CustomerService {
     private readonly prisma: PrismaService,
     private readonly remnawaveService: RemnawaveService,
     private readonly configService: ConfigService,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
   async findOrCreate(initData: InitData) {
     if (!initData.user) {
@@ -80,52 +82,21 @@ export class CustomerService {
       throw new BadRequestException('Customer not found');
     }
 
-    const subscription = customer.customerSubscription;
+    let subscription = customer.customerSubscription;
 
     if (subscription?.trialActivated) {
       throw new BadRequestException('Trial already used');
     }
 
-    const trialDays = parseInt(
-      this.configService.getOrThrow('TRIAL_DURATION_DAYS'),
-      10,
-    );
-    const now = new Date();
-    const newEnd = new Date(subscription?.endDate ?? now);
-    newEnd.setDate(newEnd.getDate() + trialDays);
-
-    if (subscription?.status === 'active') {
-      await this.remnawaveService.createTrialSubscription(telegramId, newEnd);
-      await this.prisma.customerSubscription.update({
-        where: { customerId: customer.id },
-        data: {
-          endDate: newEnd,
-          trialActivated: true,
-        },
-      });
-    } else {
-      const customerUser = await this.remnawaveService.createTrialSubscription(
+    const updatedCustomer =
+      await this.subscriptionService.upsertUserSubscription({
         telegramId,
-        newEnd,
-      );
-      await this.prisma.customerSubscription.update({
-        where: { customerId: customer.id },
-        data: {
-          status: 'active',
-          startDate: now,
-          endDate: newEnd,
-          createdVia: 'trial',
-          trialActivated: true,
-          subscriptionUrl: customerUser.response.subscriptionUrl,
-        },
+        days: 3,
+        period: 'trial_3d',
+        trialActivated: true,
+        createdVia: 'trial',
       });
-    }
 
-    customer = await this.prisma.customer.findUnique({
-      where: { telegramId: BigInt(telegramId) },
-      include: { customerSubscription: true },
-    });
-
-    return formatTelegramId(customer);
+    return formatTelegramId(updatedCustomer);
   }
 }
