@@ -1,4 +1,3 @@
-import { TrbtWebhookDto } from '@/webhook/dto/trbt-webhook.dto';
 import { WebhookResponseDto } from '@/webhook/dto/webhook-response.dto';
 import { WebhookService } from '@/webhook/webhook.service';
 import {
@@ -38,7 +37,7 @@ export class WebhookController {
   @ApiBadRequestResponse({ description: 'Empty or invalid body' })
   async handleNewSubscription(
     @Headers('trbt-signature') signature: string,
-    @Body() body: TrbtWebhookDto,
+    @Body() body: any,
   ): Promise<WebhookResponseDto> {
     this.logger.debug(
       `[TRBT] Webhook received: ${JSON.stringify(body)} | ${signature}`,
