@@ -54,6 +54,13 @@ export class TariffDto {
   discount?: number | null;
 
   @ApiProperty({
+    example: 'sz9u',
+    description: 'TRBT code of the tariff plan',
+  })
+  @Expose()
+  trbtCode?: string | null;
+
+  @ApiProperty({
     example: 200,
     description: 'Actual price per month for this plan',
   })

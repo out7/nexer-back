@@ -8,6 +8,7 @@ model Tariff {
   priceOldStars Int?     @map("price_old_stars")
   discount      Int?
   perMonth      Int      @map("per_month")
+  trbtCode      String?  @map("trbt_code")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 

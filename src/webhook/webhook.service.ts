@@ -21,6 +21,7 @@ export class WebhookService {
       this.configService.getOrThrow<string>('TRBT_API_KEY'),
     );
     const digest = hmac.update(payload).digest('hex');
+    this.logger.debug(`[TRBT] Signature: ${digest} | ${signature}`);
     return digest === signature;
   }
 
