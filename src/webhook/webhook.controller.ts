@@ -43,6 +43,7 @@ export class WebhookController {
     if (!signature) {
       throw new UnauthorizedException('Missing trbt-signature header');
     }
+
     if (!body || Object.keys(body).length === 0) {
       throw new BadRequestException('Empty or missing body in webhook request');
     }

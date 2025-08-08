@@ -77,7 +77,9 @@ export class TrbtWebhookPayloadDto {
   })
   expires_at: string;
 
-  // Если нужен web_app_link — добавь его, если бывает в payload
-  // @ApiProperty({ example: 'https://t.me/tribute/app?startapp=sz3y', required: false })
-  // web_app_link?: string;
+  @ApiProperty({
+    example: 'https://t.me/tribute/app?startapp=sz3y',
+    required: false,
+  })
+  web_app_link?: string;
 }
