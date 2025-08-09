@@ -1,19 +1,18 @@
+import { ActivityLogLogger } from '@/activity-log/activity-log.logger';
 import { SubscriptionService } from '@/subscription/subscription.service';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import type { InitData } from '@telegram-apps/init-data-node';
 import { formatTelegramId } from '../customer/helpers/format-telegram-id.helper';
 import { PrismaService } from '../prisma/prisma.service';
-import { RemnawaveService } from '../remnawave/remnawave.service';
 
 @Injectable()
 export class CustomerService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly remnawaveService: RemnawaveService,
-    private readonly configService: ConfigService,
     private readonly subscriptionService: SubscriptionService,
+    private readonly activityLogLogger: ActivityLogLogger,
   ) {}
+
   async findOrCreate(initData: InitData) {
     if (!initData.user) {
       throw new Error('Invalid initData: user is missing');
@@ -78,25 +77,33 @@ export class CustomerService {
       include: { customerSubscription: true },
     });
 
-    if (!customer) {
-      throw new BadRequestException('Customer not found');
-    }
+    if (!customer) throw new BadRequestException('Customer not found');
 
-    let subscription = customer.customerSubscription;
-
-    if (subscription?.trialActivated) {
+    if (customer.customerSubscription?.trialActivated) {
       throw new BadRequestException('Trial already used');
     }
 
-    const updatedCustomer =
-      await this.subscriptionService.upsertUserSubscription({
-        telegramId,
-        days: 3,
-        period: 'trial_3d',
-        trialActivated: true,
-        createdVia: 'trial',
-      });
+    await this.subscriptionService.upsertUserSubscription({
+      telegramId,
+      days: 3,
+      period: 'trial_3d',
+      trialActivated: true,
+      createdVia: 'trial',
+    });
 
-    return formatTelegramId(updatedCustomer);
+    // await this.activityLogLogger.log(
+    //   customer.id,
+    //   ActivityLogType.trial_activated,
+    //   {
+    //     trialDays: 3,
+    //   },
+    // );
+
+    const updated = await this.prisma.customer.findUnique({
+      where: { id: customer.id },
+      include: { customerSubscription: true },
+    });
+
+    return formatTelegramId(updated!);
   }
 }

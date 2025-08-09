@@ -1,82 +1,162 @@
+import { ActivityLogLogger } from '@/activity-log/activity-log.logger';
 import { SUBSCRIPTION_PERIODS } from '@/common/constants/subscription.constants';
 import { CustomerResponseDto } from '@/customer/dto/customer-response.dto';
 import { formatTelegramId } from '@/customer/helpers/format-telegram-id.helper';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RemnawaveService } from '@/remnawave/remnawave.service';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { ActivityLogType } from '@prisma/client';
 import { UpsertSubscriptionParams } from './types/upsert-subscription-params.type';
 
 @Injectable()
 export class SubscriptionService {
+  private readonly logger = new Logger(SubscriptionService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly remnawaveService: RemnawaveService,
+    private readonly activityLogLogger: ActivityLogLogger,
   ) {}
 
   async upsertUserSubscription(
     params: UpsertSubscriptionParams,
   ): Promise<CustomerResponseDto | null> {
-    const { telegramId, days, period, trialActivated, createdVia } = params;
+    const {
+      telegramId,
+      days,
+      period,
+      trialActivated,
+      createdVia,
+      platform,
+      log = true,
+      amount,
+    } = params;
+
+    const durationDays =
+      days ?? (period ? SUBSCRIPTION_PERIODS[period] : undefined);
+
+    this.logger.debug(
+      `[SUBSCRIPTION] Upsert started: tgId=${telegramId} createdVia=${createdVia} platform=${platform ?? '-'} period=${period ?? '-'} days=${days ?? '-'} → durationDays=${durationDays ?? '-'}`,
+    );
 
     let customer = await this.prisma.customer.findUnique({
       where: { telegramId: BigInt(telegramId) },
       include: { customerSubscription: true },
     });
-    if (!customer) throw new Error('Customer not found');
-
-    const sub = customer.customerSubscription;
-
-    let durationDays = days;
-    if (!durationDays && period) {
-      durationDays = SUBSCRIPTION_PERIODS[period];
+    if (!customer) {
+      this.logger.error(
+        `[SUBSCRIPTION] Customer not found: tgId=${telegramId}`,
+      );
+      throw new BadRequestException('Customer not found');
     }
-    if (!durationDays) throw new Error('No days or valid period provided');
+
+    if (!durationDays) {
+      this.logger.error(
+        `[SUBSCRIPTION] No valid period for tgId=${telegramId}`,
+      );
+      throw new BadRequestException('No days or valid period provided');
+    }
 
     const now = new Date();
-    let startDate: Date;
-    let endDate: Date;
-
-    if (sub && sub.status === 'active' && sub.endDate && sub.endDate > now) {
-      startDate = sub.startDate ?? now;
-      endDate = new Date(
-        sub.endDate.getTime() + durationDays * 24 * 60 * 60 * 1000,
-      );
-    } else {
-      startDate = now;
-      endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
-    }
-
-    const remnawaveCustomer = await this.remnawaveService.activateVpnAccess(
-      telegramId,
-      endDate,
+    const sub = customer.customerSubscription;
+    const isActive = !!(
+      sub &&
+      sub.status === 'active' &&
+      sub.endDate &&
+      sub.endDate > now
+    );
+    const previousEndDate = isActive ? sub!.endDate! : null;
+    const startDate = isActive ? (sub!.startDate ?? now) : now;
+    const baseEnd = previousEndDate ?? now;
+    const newEndDate = new Date(
+      baseEnd.getTime() + durationDays * 24 * 60 * 60 * 1000,
     );
 
-    await this.prisma.customerSubscription.upsert({
-      where: { customerId: customer.id },
-      update: {
-        status: 'active',
-        startDate,
-        endDate,
-        createdVia,
-        trialActivated: !!trialActivated,
-        subscriptionUrl: remnawaveCustomer.response.subscriptionUrl,
-      },
-      create: {
-        customerId: customer.id,
-        status: 'active',
-        startDate,
-        endDate,
-        createdVia,
-        trialActivated: !!trialActivated,
-        subscriptionUrl: remnawaveCustomer.response.subscriptionUrl,
-      },
+    this.logger.debug(
+      `[SUBSCRIPTION] ${isActive ? 'Extending' : 'Creating'} subscription: start=${startDate.toISOString()} end=${newEndDate.toISOString()}`,
+    );
+
+    const updatedCustomer = await this.prisma.$transaction(async (tx) => {
+      const remnawaveCustomer = await this.remnawaveService.activateVpnAccess(
+        String(telegramId),
+        newEndDate,
+      );
+
+      this.logger.debug(
+        `[SUBSCRIPTION] Remnawave activated for ${remnawaveCustomer.response.username}, status=${remnawaveCustomer.response.status}`,
+      );
+
+      await tx.customerSubscription.upsert({
+        where: { customerId: customer.id },
+        update: {
+          status: 'active',
+          startDate,
+          endDate: newEndDate,
+          createdVia,
+          trialActivated: !!trialActivated || sub?.trialActivated || false,
+          subscriptionUrl: remnawaveCustomer.response.subscriptionUrl,
+        },
+        create: {
+          customerId: customer.id,
+          status: 'active',
+          startDate,
+          endDate: newEndDate,
+          createdVia,
+          trialActivated: !!trialActivated,
+          subscriptionUrl: remnawaveCustomer.response.subscriptionUrl,
+        },
+      });
+
+      return tx.customer.findUnique({
+        where: { id: customer.id },
+        include: { customerSubscription: true },
+      });
     });
 
-    customer = await this.prisma.customer.findUnique({
-      where: { telegramId: BigInt(telegramId) },
-      include: { customerSubscription: true },
-    });
+    if (log && updatedCustomer) {
+      try {
+        switch (createdVia) {
+          case 'paid':
+            await this.activityLogLogger.log(
+              updatedCustomer.id,
+              ActivityLogType.purchased,
+              {
+                period: durationDays,
+                platform: platform ?? 'trbt',
+                ...(typeof amount === 'number' ? { amount } : {}),
+              },
+            );
+            break;
+          case 'bonus':
+            await this.activityLogLogger.log(
+              updatedCustomer.id,
+              ActivityLogType.bonus_claimed,
+              {
+                days: durationDays,
+                previousEndDate: previousEndDate?.toISOString(),
+                newEndDate: newEndDate.toISOString(),
+              },
+            );
+            break;
+          case 'trial':
+            await this.activityLogLogger.log(
+              updatedCustomer.id,
+              ActivityLogType.trial_activated,
+              {
+                grantedDays: durationDays,
+              },
+            );
+            break;
+        }
+      } catch (e) {
+        this.logger.warn(
+          `[SUBSCRIPTION] Failed to write ActivityLog for tgId=${telegramId}`,
+          e,
+        );
+      }
+    }
 
-    return formatTelegramId(customer);
+    this.logger.debug(`[SUBSCRIPTION] Upsert completed: tgId=${telegramId}`);
+    return formatTelegramId(updatedCustomer);
   }
 }

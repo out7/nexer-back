@@ -1,9 +1,8 @@
 enum ActivityLogType {
   purchased
-  subscription_extended
+  trial_activated
   bonus_claimed
-  trial_started
-  referral_bonus_added
+  referral_bonus_accrued
 }
 
 model ActivityLog {
