@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import type { Request } from 'express';
@@ -9,6 +9,8 @@ import { AuthService } from '../auth.service';
 
 @Injectable()
 export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh-jwt') {
+  private readonly logger = new Logger(RefreshStrategy.name);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
@@ -16,7 +18,7 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh-jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromBodyField('refreshToken'),
       secretOrKey: configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      ignoreExpiration: false,
+      ignoreExpiration: true,
       passReqToCallback: true,
     });
   }

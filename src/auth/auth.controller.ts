@@ -6,6 +6,7 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
+  Logger,
   Post,
   Request,
   UseGuards,
@@ -27,6 +28,8 @@ import { TelegramAuthGuard } from './guards/tma-auth.guard';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(private readonly authService: AuthService) {}
 
   @ApiOperation({
