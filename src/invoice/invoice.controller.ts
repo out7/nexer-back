@@ -1,12 +1,14 @@
+import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
 import { serialize } from '@/common/helpers/serialize';
 import { InvoiceUrlDto } from '@/invoice/dto/invoice-url.dto';
 import { InvoiceService } from '@/invoice/invoice.service';
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import {
   ApiNotFoundResponse,
   ApiOperation,
   ApiParam,
   ApiResponse,
+  ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
 
@@ -15,7 +17,6 @@ import {
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
-  @Get('tariff/:code')
   @ApiOperation({
     summary: 'Generate a payment link for a tariff using Telegram Stars',
   })
@@ -32,6 +33,9 @@ export class InvoiceController {
   @ApiNotFoundResponse({
     description: 'Tariff not found',
   })
+  @ApiSecurity('bearer')
+  @UseGuards(JwtAuthGuard)
+  @Get('tariff/:code')
   async getInvoice(@Param('code') code: string): Promise<InvoiceUrlDto> {
     return serialize(
       InvoiceUrlDto,

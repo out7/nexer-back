@@ -7,10 +7,12 @@ import { plainToInstance } from 'class-transformer';
 export class ActivityLogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByCustomerId(customerId: string): Promise<ActivityLogDto[]> {
+  async findByCustomerId(telegramId: string): Promise<ActivityLogDto[]> {
     const activityLogs = await this.prisma.activityLog.findMany({
       where: {
-        customerId,
+        customer: {
+          telegramId: BigInt(telegramId),
+        },
       },
       orderBy: {
         createdAt: 'desc',

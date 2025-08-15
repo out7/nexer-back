@@ -13,7 +13,9 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node prisma/seeds/seed.ts",
+    "seed:logs": "ts-node prisma/seeds/activity-logs.ts",
+    "seed:tariffs": "ts-node prisma/seeds/tariffs.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",

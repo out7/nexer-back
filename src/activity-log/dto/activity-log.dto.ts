@@ -1,35 +1,43 @@
 import { ApiExtraModels, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { ActivityLogType } from '@prisma/client';
-import { Expose, Transform, plainToInstance } from 'class-transformer';
+import { Exclude, Expose, Transform, plainToInstance } from 'class-transformer';
 import { IsEnum, IsISO8601, IsString, ValidateNested } from 'class-validator';
 
+import { SubscriptionExpiredMetaDto } from '@/activity-log/dto/meta/subscription-expired-meta.dto';
+import { SubscriptionExtendedMetaDto } from '@/activity-log/dto/meta/subscription-extended-meta.dto';
+import { SubscriptionPurchasedMetaDto } from '@/activity-log/dto/meta/subscription-purchased-meta.dto';
 import { BonusClaimedMetaDto } from './meta/bonus-claimed-meta.dto';
-import { PurchasedMetaDto } from './meta/purchased-meta.dto';
-import { ReferralBonusAccruedMetaDto } from './meta/referral-bonus-accrued-meta.dto';
+import { ReferralBonusAddedMetaDto } from './meta/referral-bonus-added-meta.dto';
 import { TrialActivatedMetaDto } from './meta/trial-activated-meta.dto';
 
 type MetaUnion =
-  | PurchasedMetaDto
+  | SubscriptionPurchasedMetaDto
+  | SubscriptionExtendedMetaDto
+  | SubscriptionExpiredMetaDto
   | BonusClaimedMetaDto
   | TrialActivatedMetaDto
-  | ReferralBonusAccruedMetaDto;
+  | ReferralBonusAddedMetaDto;
 
 const META_MAP: Record<ActivityLogType, new () => MetaUnion> = {
-  purchased: PurchasedMetaDto,
+  subscription_purchased: SubscriptionPurchasedMetaDto,
+  subscription_extended: SubscriptionExtendedMetaDto,
+  subscription_expired: SubscriptionExpiredMetaDto,
   bonus_claimed: BonusClaimedMetaDto,
   trial_activated: TrialActivatedMetaDto,
-  referral_bonus_accrued: ReferralBonusAccruedMetaDto,
+  referral_bonus_added: ReferralBonusAddedMetaDto,
 };
 
 @ApiExtraModels(
-  PurchasedMetaDto,
+  SubscriptionPurchasedMetaDto,
+  SubscriptionExtendedMetaDto,
+  SubscriptionExpiredMetaDto,
   BonusClaimedMetaDto,
   TrialActivatedMetaDto,
-  ReferralBonusAccruedMetaDto,
+  ReferralBonusAddedMetaDto,
 )
 export class ActivityLogDto {
   @ApiProperty({ example: 'f7d5c79a-...' })
-  @Expose()
+  @Exclude()
   @IsString()
   id: string;
 
@@ -46,10 +54,12 @@ export class ActivityLogDto {
   @ApiProperty({
     description: 'Event-specific metadata. Shape depends on "type".',
     oneOf: [
-      { $ref: getSchemaPath(PurchasedMetaDto) },
+      { $ref: getSchemaPath(SubscriptionPurchasedMetaDto) },
+      { $ref: getSchemaPath(SubscriptionExtendedMetaDto) },
+      { $ref: getSchemaPath(SubscriptionExpiredMetaDto) },
       { $ref: getSchemaPath(BonusClaimedMetaDto) },
       { $ref: getSchemaPath(TrialActivatedMetaDto) },
-      { $ref: getSchemaPath(ReferralBonusAccruedMetaDto) },
+      { $ref: getSchemaPath(ReferralBonusAddedMetaDto) },
     ],
   })
   @Expose()

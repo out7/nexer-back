@@ -43,6 +43,7 @@ export class SubscriptionService {
       where: { telegramId: BigInt(telegramId) },
       include: { customerSubscription: true },
     });
+
     if (!customer) {
       this.logger.error(
         `[SUBSCRIPTION] Customer not found: tgId=${telegramId}`,
@@ -117,15 +118,30 @@ export class SubscriptionService {
       try {
         switch (createdVia) {
           case 'paid':
-            await this.activityLogLogger.log(
-              updatedCustomer.id,
-              ActivityLogType.purchased,
-              {
-                period: durationDays,
-                platform: platform ?? 'trbt',
-                ...(typeof amount === 'number' ? { amount } : {}),
-              },
-            );
+            if (isActive) {
+              await this.activityLogLogger.log(
+                updatedCustomer.id,
+                ActivityLogType.subscription_extended,
+                {
+                  daysAdded: durationDays,
+                  platform: platform ?? 'trbt',
+                  ...(typeof amount === 'number' ? { amount } : {}),
+                  previousEndDate: previousEndDate?.toISOString(),
+                  newEndDate: newEndDate.toISOString(),
+                },
+              );
+            } else {
+              await this.activityLogLogger.log(
+                updatedCustomer.id,
+                ActivityLogType.subscription_purchased,
+                {
+                  period: durationDays,
+                  platform: platform ?? 'trbt',
+                  ...(typeof amount === 'number' ? { amount } : {}),
+                  newEndDate: newEndDate.toISOString(),
+                },
+              );
+            }
             break;
           case 'bonus':
             await this.activityLogLogger.log(

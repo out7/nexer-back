@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-async function main() {
+export async function seedTariffs() {
   const baseRUB = 200;
   const baseStars = 230;
 
@@ -55,7 +55,7 @@ async function main() {
   });
 }
 
-main()
+seedTariffs()
   .then(async () => {
     await prisma.$disconnect();
   })
