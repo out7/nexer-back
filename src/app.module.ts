@@ -11,6 +11,7 @@ import { TelegramModule } from '@/telegram/telegram.module';
 import { WebhookModule } from '@/webhook/webhook.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ReferralModule } from './referral/referral.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ConfigModule } from '@nestjs/config';
     SubscriptionModule,
     SubscriptionExpirerModule,
     ActivityLogModule,
+    ReferralModule,
   ],
 })
 export class AppModule {}

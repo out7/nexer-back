@@ -37,6 +37,43 @@ export class CustomerService {
     return formatTelegramId(customer);
   }
 
+  async create(params: {
+    telegramId: string;
+    username: string | null;
+    language: string | 'ru';
+    referredById?: string | null;
+  }) {
+    const customer = await this.prisma.customer.create({
+      data: {
+        telegramId: BigInt(params.telegramId),
+        username: params.username ?? null,
+        language: params.language,
+        referredById: params.referredById ?? null,
+        customerSubscription: {
+          create: {},
+        },
+      },
+    });
+
+    return formatTelegramId(customer);
+  }
+
+  async update(params: {
+    telegramId: string;
+    username: string | null;
+    language: string | 'ru';
+  }) {
+    const customer = await this.prisma.customer.update({
+      where: { telegramId: BigInt(params.telegramId) },
+      data: {
+        username: params.username ?? null,
+        language: params.language,
+      },
+    });
+
+    return formatTelegramId(customer);
+  }
+
   async getProfile(telegramId: string) {
     const customer = await this.prisma.customer.findUnique({
       where: { telegramId: BigInt(telegramId) },
@@ -90,14 +127,6 @@ export class CustomerService {
       trialActivated: true,
       createdVia: 'trial',
     });
-
-    // await this.activityLogLogger.log(
-    //   customer.id,
-    //   ActivityLogType.trial_activated,
-    //   {
-    //     trialDays: 3,
-    //   },
-    // );
 
     const updated = await this.prisma.customer.findUnique({
       where: { id: customer.id },

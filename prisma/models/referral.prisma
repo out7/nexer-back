@@ -5,15 +5,17 @@ enum ReferralStatus {
 }
 
 model Referral {
-  id                 String         @id @default(uuid())
-  referrerId         String         @map("referrer_id")
-  referredCustomerId String         @unique @map("referred_customer_id")
-  status             ReferralStatus @default(inactive)
-  createdAt          DateTime       @default(now()) @map("created_at")
-  updatedAt          DateTime       @updatedAt @map("updated_at")
+  id         String         @id @default(uuid())
+  referrerId String         @map("referrer_id")
+  referredId String         @unique @map("referred_id")
+  status     ReferralStatus @default(inactive)
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
 
-  referrer         Customer @relation("ReferralsGiven", fields: [referrerId], references: [id])
-  referredCustomer Customer @relation("ReferralReceived", fields: [referredCustomerId], references: [id])
+  referrer Customer @relation("ReferralsGiven", fields: [referrerId], references: [id])
+  referred Customer @relation("ReferralReceived", fields: [referredId], references: [id])
 
+  @@unique([referrerId, referredId])
+  @@index([referrerId, status, createdAt])
   @@map("referral")
 }

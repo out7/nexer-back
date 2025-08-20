@@ -1,3 +1,5 @@
+import { CustomerModule } from '@/customer/customer.module';
+import { ReferralModule } from '@/referral/referral.module';
 import { SubscriptionModule } from '@/subscription/subscription.module';
 import { TelegramUpdate } from '@/telegram/telegram.update';
 import { Module } from '@nestjs/common';
@@ -20,6 +22,8 @@ import { TelegramService } from './telegram.service';
       inject: [ConfigService],
     }),
     SubscriptionModule,
+    CustomerModule,
+    ReferralModule,
   ],
   providers: [TelegramService, TelegramUpdate],
   exports: [TelegramService],

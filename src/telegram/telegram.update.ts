@@ -1,4 +1,6 @@
 import { SUBSCRIPTION_PERIODS } from '@/common/constants/subscription.constants';
+import { CustomerService } from '@/customer/customer.service';
+import { ReferralService } from '@/referral/referral.service';
 import { SubscriptionService } from '@/subscription/subscription.service';
 import { TelegramContext } from '@/telegram/interfaces/telegraf-context.interface';
 import { Injectable, Logger } from '@nestjs/common';
@@ -13,12 +15,53 @@ export class TelegramUpdate {
   constructor(
     @InjectBot() private readonly bot: Telegraf<TelegramContext>,
     private readonly subscriptionService: SubscriptionService,
+    private readonly customerService: CustomerService,
+    private readonly referralService: ReferralService,
   ) {}
 
   // TODO: add beautiful message for start bot
   @Start()
   async onStart(@Ctx() ctx: Context): Promise<void> {
-    await ctx.reply('Hello, world!');
+    const from = ctx.from;
+    if (!from) return;
+
+    const text = ctx.message && 'text' in ctx.message ? ctx.message.text : '';
+    const payload = text?.startsWith('/start') ? text.split(' ')[1] : undefined;
+
+    const m = payload?.match(/^ref_(?:u)?(\d+)$/);
+    const referrerTgId = m ? m[1] : null;
+    const referredTgId = String(from.id);
+
+    let customer = await this.customerService.findOneByTelegramId(referredTgId);
+
+    if (!customer) {
+      const inviter = referrerTgId
+        ? await this.customerService.findOneByTelegramId(referrerTgId)
+        : null;
+
+      customer = await this.customerService.create({
+        telegramId: referredTgId,
+        username: from.username ?? null,
+        language: from.language_code ?? 'ru',
+        referredById: inviter ? inviter.id : null,
+      });
+
+      if (inviter) {
+        await this.referralService.create({
+          referrerId: inviter.id,
+          referredId: customer.id,
+          status: 'inactive',
+        });
+      }
+    } else {
+      await this.customerService.update({
+        telegramId: referredTgId,
+        username: from.username ?? null,
+        language: from.language_code ?? 'ru',
+      });
+    }
+
+    await ctx.reply('Добро пожаловать! 🚀');
   }
 
   @On('pre_checkout_query')
