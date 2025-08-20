@@ -2,6 +2,7 @@ import { ActivityLogLogger } from '@/activity-log/activity-log.logger';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ReferralStatus } from '@prisma/client';
+import { ReferralDto } from './dto/referral.dto';
 
 @Injectable()
 export class ReferralService {
@@ -33,5 +34,31 @@ export class ReferralService {
       where: { referredId },
       data: { status },
     });
+  }
+
+  async listByReferrer(referrerId: string): Promise<ReferralDto[]> {
+    const rows = await this.prisma.referral.findMany({
+      where: { referrerId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        referred: {
+          select: {
+            telegramId: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      status: row.status,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      referred: {
+        telegramId: String(row.referred.telegramId),
+        username: row.referred.username,
+      },
+    }));
   }
 }
