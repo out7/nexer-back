@@ -73,6 +73,13 @@ export class SubscriptionService {
       baseEnd.getTime() + durationDays * 24 * 60 * 60 * 1000,
     );
 
+    const isBonusCall = createdVia === 'bonus';
+    const createdViaForUpdate = isBonusCall
+      ? sub?.createdVia == null || sub?.createdVia === 'trial'
+        ? 'bonus'
+        : sub.createdVia
+      : createdVia;
+
     this.logger.debug(
       `[SUBSCRIPTION] ${isActive ? 'Extending' : 'Creating'} subscription: start=${startDate.toISOString()} end=${newEndDate.toISOString()}`,
     );
@@ -93,7 +100,7 @@ export class SubscriptionService {
           status: 'active',
           startDate,
           endDate: newEndDate,
-          createdVia,
+          createdVia: createdViaForUpdate,
           trialActivated: !!trialActivated || sub?.trialActivated || false,
           subscriptionUrl: remnawaveCustomer.response.subscriptionUrl,
         },
@@ -174,5 +181,33 @@ export class SubscriptionService {
 
     this.logger.debug(`[SUBSCRIPTION] Upsert completed: tgId=${telegramId}`);
     return formatTelegramId(updatedCustomer);
+  }
+
+  async claimBonusDays(telegramId: string): Promise<CustomerResponseDto> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { telegramId: BigInt(telegramId) },
+    });
+    if (!customer) {
+      throw new BadRequestException('Customer not found');
+    }
+
+    const days = customer.unclaimedBonusDays ?? 0;
+    if (days <= 0) {
+      throw new BadRequestException('No unclaimed bonus days');
+    }
+
+    const updatedCustomer = await this.upsertUserSubscription({
+      telegramId,
+      days,
+      createdVia: 'bonus',
+      log: true,
+    });
+
+    await this.prisma.customer.update({
+      where: { id: customer.id },
+      data: { unclaimedBonusDays: 0 },
+    });
+
+    return updatedCustomer!;
   }
 }
