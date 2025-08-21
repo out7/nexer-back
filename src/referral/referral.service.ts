@@ -1,4 +1,5 @@
 import { ActivityLogLogger } from '@/activity-log/activity-log.logger';
+import { maskTelegramId } from '@/common/utils/mask.util';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ReferralStatus } from '@prisma/client';
@@ -44,7 +45,6 @@ export class ReferralService {
         referred: {
           select: {
             telegramId: true,
-            username: true,
           },
         },
       },
@@ -56,8 +56,7 @@ export class ReferralService {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       referred: {
-        telegramId: String(row.referred.telegramId),
-        username: row.referred.username,
+        telegramId: maskTelegramId(row.referred.telegramId, 4),
       },
     }));
   }

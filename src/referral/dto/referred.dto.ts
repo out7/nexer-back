@@ -4,16 +4,17 @@ import { Expose } from 'class-transformer';
 export class ReferredDto {
   @ApiProperty({
     type: String,
-    description: 'Telegram ID of the referred user (stringified BigInt)',
+    description: 'Masked Telegram ID of the referred user (last 4 digits only)',
   })
   @Expose()
-  telegramId: string;
+  telegramId!: string;
 
   @ApiProperty({
     type: String,
     nullable: true,
-    description: 'Telegram username of the referred user',
+    required: false,
+    description: 'Telegram username (optional)',
   })
   @Expose()
-  username: string | null;
+  username?: string | null;
 }
