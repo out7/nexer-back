@@ -71,7 +71,7 @@ export class PaymentService {
               customerId: customer.referredById!,
               type: ActivityLogType.referral_bonus_added,
               meta: {
-                bonusDays,
+                days: bonusDays,
                 referredCustomerId: customer.id,
                 sourcePaymentId: payment.id,
               },
