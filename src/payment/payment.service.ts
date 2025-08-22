@@ -28,8 +28,9 @@ export class PaymentService {
 
     if (!(amount > 0)) throw new BadRequestException('Invalid amount');
 
-    const bonusDays = this.configService.getOrThrow<number>(
-      'REFERRAL_BONUS_DAYS',
+    const bonusDays = parseInt(
+      this.configService.getOrThrow<string>('REFERRAL_BONUS_DAYS'),
+      10,
     );
     const hasReferrer =
       !!customer.referredById && customer.referredById !== customer.id;
