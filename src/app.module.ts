@@ -12,6 +12,7 @@ import { WebhookModule } from '@/webhook/webhook.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ReferralModule } from './referral/referral.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ReferralModule } from './referral/referral.module';
     SubscriptionExpirerModule,
     ActivityLogModule,
     ReferralModule,
+    PaymentModule,
   ],
 })
 export class AppModule {}

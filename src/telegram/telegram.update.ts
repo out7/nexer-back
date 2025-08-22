@@ -1,9 +1,11 @@
 import { SUBSCRIPTION_PERIODS } from '@/common/constants/subscription.constants';
 import { CustomerService } from '@/customer/customer.service';
+import { PaymentService } from '@/payment/payment.service';
 import { ReferralService } from '@/referral/referral.service';
 import { SubscriptionService } from '@/subscription/subscription.service';
 import { TelegramContext } from '@/telegram/interfaces/telegraf-context.interface';
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Ctx, InjectBot, On, Start, Update } from 'nestjs-telegraf';
 import { Context, Telegraf } from 'telegraf';
 
@@ -14,9 +16,11 @@ export class TelegramUpdate {
 
   constructor(
     @InjectBot() private readonly bot: Telegraf<TelegramContext>,
+    private readonly configService: ConfigService,
     private readonly subscriptionService: SubscriptionService,
     private readonly customerService: CustomerService,
     private readonly referralService: ReferralService,
+    private readonly paymentService: PaymentService,
   ) {}
 
   // TODO: add beautiful message for start bot
@@ -81,7 +85,7 @@ export class TelegramUpdate {
       const payment = update.message.successful_payment;
       const user = ctx.from;
       if (!user) {
-        this.logger.warn('[TELEGRAM] User not found');
+        this.logger.warn('[TELEGRAM] Telegram user not found');
         return;
       }
 
@@ -97,6 +101,21 @@ export class TelegramUpdate {
         ':',
       )[1] as keyof typeof SUBSCRIPTION_PERIODS;
       const days = SUBSCRIPTION_PERIODS[period];
+
+      const customer = await this.customerService.findOneByTelegramId(
+        user.id.toString(),
+      );
+      if (!customer) {
+        this.logger.warn('[TELEGRAM] Customer not found');
+        return;
+      }
+
+      await this.paymentService.create({
+        customer,
+        amount: payment.total_amount,
+        currency: 'stars',
+        method: 'telegram_stars',
+      });
 
       this.subscriptionService.upsertUserSubscription({
         telegramId: user.id.toString(),

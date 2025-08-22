@@ -1,4 +1,6 @@
 import { TRBT_TO_LOCAL_PERIOD } from '@/common/constants/subscription.constants';
+import { CustomerService } from '@/customer/customer.service';
+import { PaymentService } from '@/payment/payment.service';
 import { SubscriptionService } from '@/subscription/subscription.service';
 import { TrbtWebhookDto } from '@/webhook/dto/trbt-webhook.dto';
 import { Injectable, Logger } from '@nestjs/common';
@@ -12,6 +14,8 @@ export class WebhookService {
   constructor(
     private readonly configService: ConfigService,
     private readonly subscriptionService: SubscriptionService,
+    private readonly paymentService: PaymentService,
+    private readonly customerService: CustomerService,
   ) {}
 
   verifyTrbtSignature(signature: string, body: any): boolean {
@@ -29,6 +33,21 @@ export class WebhookService {
     const { payload } = body;
 
     this.logger.debug(`[TRBT] New purchase: ${JSON.stringify(payload)}`);
+
+    const customer = await this.customerService.findOneByTelegramId(
+      payload.telegram_user_id.toString(),
+    );
+    if (!customer) {
+      this.logger.warn('[TELEGRAM] Customer not found');
+      return;
+    }
+
+    await this.paymentService.create({
+      customer,
+      amount: payload.amount,
+      currency: 'rub',
+      method: 'trbt',
+    });
 
     this.subscriptionService.upsertUserSubscription({
       telegramId: payload.telegram_user_id.toString(),

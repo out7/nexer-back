@@ -1,4 +1,5 @@
 import { CustomerModule } from '@/customer/customer.module';
+import { PaymentModule } from '@/payment/payment.module';
 import { ReferralModule } from '@/referral/referral.module';
 import { SubscriptionModule } from '@/subscription/subscription.module';
 import { TelegramUpdate } from '@/telegram/telegram.update';
@@ -24,6 +25,7 @@ import { TelegramService } from './telegram.service';
     SubscriptionModule,
     CustomerModule,
     ReferralModule,
+    PaymentModule,
   ],
   providers: [TelegramService, TelegramUpdate],
   exports: [TelegramService],

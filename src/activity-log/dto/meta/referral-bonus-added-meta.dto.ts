@@ -16,7 +16,7 @@ export class ReferralBonusAddedMetaDto {
   @Exclude()
   @IsOptional()
   @IsString()
-  refereeTelegramId?: string;
+  referredCustomerId?: string;
 
   @ApiProperty({ example: 'payment_abc123', required: false })
   @Exclude()
