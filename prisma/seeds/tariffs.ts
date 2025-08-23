@@ -52,6 +52,7 @@ export async function seedTariffs() {
         perMonth: Math.round(baseRUB * 0.6),
       },
     ],
+    skipDuplicates: true,
   });
 }
 

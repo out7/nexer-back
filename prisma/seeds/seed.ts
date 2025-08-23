@@ -1,9 +1,7 @@
-import { seedActivityLogs } from './activity-logs';
 import { seedTariffs } from './tariffs';
 
 async function main() {
   await seedTariffs();
-  await seedActivityLogs();
 }
 
 main()
