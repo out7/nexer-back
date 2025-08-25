@@ -120,6 +120,13 @@ export class CustomerService {
       throw new BadRequestException('Trial already used');
     }
 
+    if (customer.referredById) {
+      await this.prisma.referral.updateMany({
+        where: { referredId: customer.id, status: 'inactive' },
+        data: { status: 'trial' },
+      });
+    }
+
     await this.subscriptionService.upsertUserSubscription({
       telegramId,
       days: 3,

@@ -35,11 +35,9 @@ export class SubscriptionExpirerService {
     for (const sub of batch) {
       try {
         await this.prisma.$transaction(async (tx) => {
-          // 1) отключаем доступ в панели (должно быть идемпотентно)
-          // TODO:
-          // await this.remnawave.deactivateVpnAccess(
-          //   sub.customer.telegramId.toString(),
-          // );
+          await this.remnawave.disableVpnAccess(
+            sub.customer.telegramId.toString(),
+          );
 
           await tx.customerSubscription.updateMany({
             where: {

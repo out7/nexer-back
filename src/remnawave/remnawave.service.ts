@@ -73,10 +73,30 @@ export class RemnawaveService {
           telegramId: Number(telegramId),
           status: 'ACTIVE',
           expireAt: ExpirationDate,
+          activeInternalSquads: ['80e426f1-ebf8-4a35-a183-2b103a3ab796'],
         },
       }),
     );
 
     return createdUserRaw.data;
+  }
+
+  async disableVpnAccess(telegramId: string) {
+    const user = await this.findUserByTelegramId(telegramId);
+
+    if (user) {
+      const updatedUserRaw = await firstValueFrom(
+        this.httpService.request<UpdateUserCommand.Response>({
+          method: UpdateUserCommand.endpointDetails.REQUEST_METHOD,
+          url: UpdateUserCommand.url,
+          data: {
+            uuid: user.uuid,
+            status: 'EXPIRED',
+          },
+        }),
+      );
+
+      return updatedUserRaw.data;
+    }
   }
 }

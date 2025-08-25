@@ -15,8 +15,8 @@
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "migrate:deploy": "prisma migrate deploy",
     "migrate:seed": "bun run prisma/seeds/seed.ts",
-    "seed:logs": "ts-node prisma/seeds/activity-logs.ts",
-    "seed:tariffs": "ts-node prisma/seeds/tariffs.ts"
+    "seed:logs": "bun run prisma/seeds/activity-logs.ts",
+    "seed:tariffs": "bun run prisma/seeds/tariffs.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
@@ -36,11 +36,12 @@
     "axios": "^1.11.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "dotenv": "^17.2.1",
     "module-alias": "^2.2.3",
     "nestjs-telegraf": "^2.9.1",
     "passport-custom": "^1.1.1",
     "passport-jwt": "^4.0.1",
-    "prisma": "^6.13.0",
+    "prisma": "^6.14.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "telegraf": "^4.16.3"
@@ -57,7 +58,6 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^16.0.0",
-    "jest": "^29.7.0",
     "prettier": "^3.4.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
@@ -65,5 +65,9 @@
   },
   "_moduleAliases": {
     "@": "dist"
-  }
+  },
+  "trustedDependencies": [
+    "@nestjs/core",
+    "@swc/core"
+  ]
 }
