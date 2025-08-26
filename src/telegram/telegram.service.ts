@@ -56,10 +56,10 @@ export class TelegramService {
             ],
           ],
         },
-        input_message_content: {
-          message_text: `Попробуй Nexer VPN по моей ссылке 👉 https://t.me/nexervpn_bot?start=ref_${telegramId}`,
-          parse_mode: 'HTML',
-        },
+        // input_message_content: {
+        //   message_text: `Попробуй Nexer VPN по моей ссылке 👉 https://t.me/nexervpn_bot?start=ref_${telegramId}`,
+        //   parse_mode: 'HTML',
+        // },
       },
 
       allow_user_chats: true,
