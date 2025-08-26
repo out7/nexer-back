@@ -36,13 +36,32 @@ export class TelegramService {
     const payload = {
       user_id: userId,
       result: {
-        type: 'article',
-        id: 'your-id',
-        title: 'Shared from Mini App',
+        type: 'photo',
+        id: `nexer-vpn-share-${userId}`,
+        photo_url: 'https://i.archi.ru/i/377429.jpg',
+        thumb_url: 'https://i.archi.ru/i/377429.jpg',
+
+        title: 'Присоединяйся к Nexer VPN',
+        description: '🚀 Быстрый и надёжный VPN. Попробуй прямо сейчас!',
+        caption: '🌐 Nexer VPN — подключайся и оставайся в безопасности!',
+
+        // Кнопки под результатом
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: 'Open',
+                url: `https://t.me/nexervpn_bot?start=ref_${telegramId}`,
+              },
+            ],
+          ],
+        },
         input_message_content: {
-          message_text: '🚀 Hello from inside the Mini App!',
+          message_text: `Попробуй Nexer VPN по моей ссылке 👉 https://t.me/nexervpn_bot?start=ref_${telegramId}`,
+          parse_mode: 'HTML',
         },
       },
+
       allow_user_chats: true,
       allow_group_chats: true,
       allow_bot_chats: false,
