@@ -5,6 +5,8 @@ import { SubscriptionModule } from '@/subscription/subscription.module';
 import { TelegramUpdate } from '@/telegram/telegram.update';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+
+import { HttpModule } from '@nestjs/axios';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { TelegramService } from './telegram.service';
 
@@ -26,6 +28,7 @@ import { TelegramService } from './telegram.service';
     CustomerModule,
     ReferralModule,
     PaymentModule,
+    HttpModule,
   ],
   providers: [TelegramService, TelegramUpdate],
   exports: [TelegramService],
