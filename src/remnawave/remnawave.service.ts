@@ -91,7 +91,7 @@ export class RemnawaveService {
           url: UpdateUserCommand.url,
           data: {
             uuid: user.uuid,
-            status: 'EXPIRED',
+            status: 'DISABLED',
           },
         }),
       );
