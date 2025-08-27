@@ -38,18 +38,21 @@ export class TelegramService {
       result: {
         type: 'photo',
         id: `nexer-vpn-share-${userId}`,
-        photo_url: 'https://i.archi.ru/i/377429.jpg',
-        thumb_url: 'https://i.archi.ru/i/377429.jpg',
+        photo_url:
+          'https://s.iimg.su/s/27/gpekwpSxQR7DeWL95WZzhea0XDoC3z1eiPACcXRe.png',
+        thumb_url:
+          'https://s.iimg.su/s/27/gpekwpSxQR7DeWL95WZzhea0XDoC3z1eiPACcXRe.png',
 
         title: 'Присоединяйся к Nexer VPN',
         description: '🚀 Быстрый и надёжный VPN. Попробуй прямо сейчас!',
-        caption: '🌐 Nexer VPN — подключайся и оставайся в безопасности!',
+        caption:
+          '⚡ NexerVPN — быстрый доступ к интернету без блокировок.\n🔒 Надёжно. Удобно. Всегда рядом.',
 
         reply_markup: {
           inline_keyboard: [
             [
               {
-                text: 'Open',
+                text: 'Присоединяйся 🚀',
                 url: `https://t.me/nexervpn_bot?start=ref_${telegramId}`,
               },
             ],
