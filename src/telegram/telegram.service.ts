@@ -45,7 +45,6 @@ export class TelegramService {
         description: '🚀 Быстрый и надёжный VPN. Попробуй прямо сейчас!',
         caption: '🌐 Nexer VPN — подключайся и оставайся в безопасности!',
 
-        // Кнопки под результатом
         reply_markup: {
           inline_keyboard: [
             [
@@ -56,10 +55,6 @@ export class TelegramService {
             ],
           ],
         },
-        // input_message_content: {
-        //   message_text: `Попробуй Nexer VPN по моей ссылке 👉 https://t.me/nexervpn_bot?start=ref_${telegramId}`,
-        //   parse_mode: 'HTML',
-        // },
       },
 
       allow_user_chats: true,
@@ -90,5 +85,9 @@ export class TelegramService {
       const payload = error.response?.data ?? { message: 'Telegram API error' };
       throw new HttpException(payload, status);
     }
+  }
+
+  async sendMessage(telegramId: string, message: string) {
+    this.bot.telegram.sendMessage(telegramId, message);
   }
 }

@@ -7,7 +7,7 @@ import { TelegramContext } from '@/telegram/interfaces/telegraf-context.interfac
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Ctx, InjectBot, On, Start, Update } from 'nestjs-telegraf';
-import { Context, Telegraf } from 'telegraf';
+import { Context, Markup, Telegraf } from 'telegraf';
 
 @Update()
 @Injectable()
@@ -65,7 +65,37 @@ export class TelegramUpdate {
       });
     }
 
-    await ctx.reply('Добро пожаловать! 🚀');
+    await ctx.replyWithPhoto(
+      {
+        url: 'https://s.iimg.su/s/27/gpekwpSxQR7DeWL95WZzhea0XDoC3z1eiPACcXRe.png',
+      },
+      {
+        caption: `👋 Добро пожаловать в NexerVPN!
+    
+🔐 Здесь вы сможете:
+— Подключаться к VPN без ограничений
+— Управлять подпиской прямо в приложении
+— Получать быстрый и стабильный доступ в сеть
+
+📰 Новости: <a href="https://t.me/nexervpn">наш канал</a>
+🆘 Поддержка: <a href="https://t.me/nexervpn_support">сюда</a>
+
+🚀 Начните с выбора тарифа и наслаждайтесь свободным интернетом`,
+        parse_mode: 'HTML',
+        ...Markup.inlineKeyboard([
+          [
+            Markup.button.webApp(
+              '🌐 Открыть Mini App',
+              'https://miniapp.nexervpn.run',
+            ),
+          ],
+          [
+            Markup.button.url('📰 Новости', 'https://t.me/nexervpn'),
+            Markup.button.url('🆘 Поддержка', 'https://t.me/nexervpn_support'),
+          ],
+        ]),
+      },
+    );
   }
 
   @On('pre_checkout_query')
@@ -76,7 +106,6 @@ export class TelegramUpdate {
     return !!msg && typeof msg === 'object' && 'successful_payment' in msg;
   }
 
-  // TODO: beautiful message for successful payment
   @On('successful_payment')
   async onSuccessfulPayment(@Ctx() ctx: Context): Promise<void> {
     const { update } = ctx;
@@ -123,7 +152,9 @@ export class TelegramUpdate {
         createdVia: 'paid',
       });
 
-      await ctx.reply('Платёж успешно получен!');
+      await ctx.reply(
+        `🎉 Оплата прошла успешно!\nВы получили премиум на ${days} дней. 🔥\nСпасибо, что выбираете нас 💙`,
+      );
     } else {
       this.logger.warn(
         '[TELEGRAM] successful_payment event received, but no payment info found:',

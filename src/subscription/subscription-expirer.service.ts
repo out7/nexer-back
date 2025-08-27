@@ -1,6 +1,7 @@
 import { ActivityLogLogger } from '@/activity-log/activity-log.logger';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RemnawaveService } from '@/remnawave/remnawave.service';
+import { TelegramService } from '@/telegram/telegram.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ActivityLogType } from '@prisma/client';
@@ -13,6 +14,7 @@ export class SubscriptionExpirerService {
     private readonly prisma: PrismaService,
     private readonly remnawave: RemnawaveService,
     private readonly activityLog: ActivityLogLogger,
+    private readonly telegramService: TelegramService,
   ) {}
 
   @Cron(CronExpression.EVERY_10_SECONDS)
@@ -52,6 +54,11 @@ export class SubscriptionExpirerService {
             sub.customer.id,
             ActivityLogType.subscription_expired,
             { expiredAt: sub.endDate!.toISOString() },
+          );
+
+          await this.telegramService.sendMessage(
+            sub.customer.telegramId.toString(),
+            `⛔️ Ваша премиум-подписка закончилась.\nЧтобы снова пользоваться VPN без ограничений — продлите подписку в приложении. 🚀`,
           );
         });
 
