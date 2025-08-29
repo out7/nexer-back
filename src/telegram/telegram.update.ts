@@ -86,7 +86,7 @@ export class TelegramUpdate {
           [
             Markup.button.webApp(
               '🌐 Открыть Mini App',
-              'https://miniapp.nexervpn.run',
+              'https://app.nexervpn.run',
             ),
           ],
           [
