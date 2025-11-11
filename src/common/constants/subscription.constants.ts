@@ -1,6 +1,7 @@
 export const TRBT_TO_LOCAL_PERIOD: Record<string, string> = {
   monthly: 'month',
   quarterly: 'quarter',
+  halfyearly: 'half_year',
   yearly: 'year',
 };
 

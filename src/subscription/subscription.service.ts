@@ -196,28 +196,16 @@ export class SubscriptionService {
       throw new BadRequestException('No unclaimed bonus days');
     }
 
-    // const updatedCustomer = await this.upsertUserSubscription({
-    //   telegramId,
-    //   days,
-    //   createdVia: 'bonus',
-    //   log: true,
-    // });
-
-    // await this.prisma.customer.update({
-    //   where: { id: customer.id },
-    //   data: { unclaimedBonusDays: 0 },
-    // });
-
     const updatedCustomer = await this.upsertUserSubscription({
       telegramId,
-      days: 1,
+      days,
       createdVia: 'bonus',
       log: true,
     });
 
     await this.prisma.customer.update({
       where: { id: customer.id },
-      data: { unclaimedBonusDays: days - 1 },
+      data: { unclaimedBonusDays: 0 },
     });
 
     return updatedCustomer!;
