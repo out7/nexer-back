@@ -47,14 +47,24 @@ export class AuthService {
   }
 
   validateTelegramData(data: string): boolean {
+    // getOrThrow<number> только приводит тип — из окружения всё равно придёт
+    // строка, а isValid ждёт число секунд. Без parseInt проверка ведёт себя
+    // непредсказуемо ровно в тот момент, когда на неё начинают полагаться.
+    const expiresIn = Number.parseInt(
+      this.configService.getOrThrow<string>('TELEGRAM_INIT_DATA_EXPIRES_IN'),
+      10,
+    );
+
+    if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
+      throw new InternalServerErrorException(
+        'TELEGRAM_INIT_DATA_EXPIRES_IN must be a positive number of seconds',
+      );
+    }
+
     return isValid(
       data,
       this.configService.getOrThrow<string>('TELEGRAM_TOKEN'),
-      {
-        expiresIn: this.configService.getOrThrow<number>(
-          'TELEGRAM_INIT_DATA_EXPIRES_IN',
-        ),
-      },
+      { expiresIn },
     );
   }
 
@@ -99,10 +109,20 @@ export class AuthService {
   async validateRefreshToken(telegramId: string, refreshToken: string) {
     const customer = await this.customerService.findOneByTelegramId(telegramId);
     if (!customer) throw new UnauthorizedException('Customer not found!');
-    const refreshTokenMatched = await verify(
-      customer.refreshToken,
-      refreshToken,
-    );
+
+    // refreshToken в базе nullable: пользователь, пришедший через /start бота,
+    // но ни разу не открывший мини-апп, приходит сюда с null. argon2.verify
+    // на этом бросает исключение — получался 500 вместо честного 401.
+    if (!customer.refreshToken) {
+      throw new UnauthorizedException('Invalid Refresh Token!');
+    }
+
+    let refreshTokenMatched = false;
+    try {
+      refreshTokenMatched = await verify(customer.refreshToken, refreshToken);
+    } catch {
+      throw new UnauthorizedException('Invalid Refresh Token!');
+    }
 
     if (!refreshTokenMatched)
       throw new UnauthorizedException('Invalid Refresh Token!');

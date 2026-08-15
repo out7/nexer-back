@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import type { Request } from 'express';
 import { Strategy } from 'passport-custom';
@@ -18,10 +22,11 @@ export class TelegramStrategy extends PassportStrategy(Strategy, 'telegram') {
       throw new BadRequestException('Telegram initData is missing');
     }
 
-    // const isValidData = this.authService.validateTelegramData(authData);
-    // if (!isValidData) {
-    //   throw new UnauthorizedException('Invalid Telegram initData');
-    // }
+    // Без этой проверки initData — просто строка от клиента: любой мог
+    // подставить чужой telegram id и получить токены на чужой аккаунт.
+    if (!this.authService.validateTelegramData(authData)) {
+      throw new UnauthorizedException('Invalid Telegram initData');
+    }
 
     return { isValid: true };
   }
