@@ -1,0 +1,42 @@
+enum WebhookProvider {
+  trbt
+}
+
+enum WebhookEventStatus {
+  processing
+  completed
+  failed
+}
+
+/// Журнал вебхуков — защита от повторной обработки И от потери оплаты.
+///
+/// Провайдеры ретраят доставку при таймауте или 5xx, а обработчик долгий
+/// (ходит в Remnawave). Без журнала повтор давал второй Payment, второе
+/// продление и второй бонус рефереру.
+///
+/// Но одной уникальности мало: если пометить событие обработанным ДО работы
+/// и работа упадёт (панель недоступна), ретрай будет отброшен как дубликат —
+/// клиент заплатил и остался без подписки. Поэтому статус:
+///
+///   processing — взято в работу, параллельные доставки отбрасываем
+///   completed  — доведено до конца, все повторы отбрасываем
+///   failed     — сорвалось, СЛЕДУЮЩИЙ ретрай должен продолжить
+///
+/// paymentId хранит уже созданный платёж, чтобы возобновление не записало
+/// его второй раз.
+model WebhookEvent {
+  id         String             @id @default(uuid())
+  provider   WebhookProvider
+  externalId String             @map("external_id")
+  eventName  String             @map("event_name")
+  status     WebhookEventStatus @default(processing)
+  paymentId  String?            @map("payment_id")
+  lastError  String?            @map("last_error")
+  attempts   Int                @default(1)
+  payload    Json
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
+
+  @@unique([provider, externalId])
+  @@map("webhook_event")
+}

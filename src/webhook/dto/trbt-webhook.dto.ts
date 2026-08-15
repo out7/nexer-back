@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsObject, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsObject, IsString, ValidateNested } from 'class-validator';
 import { TrbtWebhookPayloadDto } from './trbt-webhook-payload.dto';
 
 export class TrbtWebhookDto {
@@ -25,7 +26,11 @@ export class TrbtWebhookDto {
   @IsString()
   sent_at: string;
 
+  // Без ValidateNested + Type вложенный объект остаётся сырым и не проверяется:
+  // именно из-за этого неизвестный period долетал до обработчика.
   @ApiProperty({ type: TrbtWebhookPayloadDto })
   @IsObject()
+  @ValidateNested()
+  @Type(() => TrbtWebhookPayloadDto)
   payload: TrbtWebhookPayloadDto;
 }
