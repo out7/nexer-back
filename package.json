@@ -16,7 +16,14 @@
     "migrate:deploy": "prisma migrate deploy",
     "migrate:seed": "bun run prisma/seeds/seed.ts",
     "seed:logs": "bun run prisma/seeds/activity-logs.ts",
-    "seed:tariffs": "bun run prisma/seeds/tariffs.ts"
+    "seed:tariffs": "bun run prisma/seeds/tariffs.ts",
+    "stand:up": "docker compose -f test/docker-compose.yaml up -d",
+    "stand:down": "docker compose -f test/docker-compose.yaml down -v",
+    "stand:mock": "bun run test/mock-remnawave.ts",
+    "test:concurrency": "bun run test/concurrency.test.ts",
+    "test:auth": "bun run test/auth.test.ts",
+    "test:e2e": "bun run test/e2e.test.ts",
+    "test:retry": "bun run test/webhook-retry.test.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
