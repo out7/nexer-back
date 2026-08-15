@@ -18,6 +18,9 @@ import { PaymentModule } from './payment/payment.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      // ENV_FILE позволяет поднять локальный стенд, не перетирая боевой .env
+      // (см. test/README.md). Без переменной поведение прежнее — читается .env.
+      ...(process.env.ENV_FILE ? { envFilePath: process.env.ENV_FILE } : {}),
     }),
     PrismaModule,
     AuthModule,

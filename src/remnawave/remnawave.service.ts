@@ -16,11 +16,28 @@ export class RemnawaveService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
+    // Интерцептор вешается на инстанс, который HttpModule раздаёт этому
+    // модулю. Сейчас Nest даёт отдельный инстанс на каждый импорт HttpModule,
+    // но полагаться на это опасно: TelegramModule импортирует его тоже, и
+    // при изменении этой детали токен панели уехал бы в api.telegram.org
+    // вместе с подменённым baseURL. Условие ниже — страховка ровно от этого.
     this.httpService.axiosRef.interceptors.request.use((config) => {
-      config.baseURL = this.configService.getOrThrow('REMNAWAVE_PANEL_URL');
+      const panelUrl =
+        this.configService.getOrThrow<string>('REMNAWAVE_PANEL_URL');
+
+      // Абсолютный чужой URL не трогаем — ни baseURL, ни заголовка.
+      if (config.url && /^https?:\/\//i.test(config.url)) {
+        return config;
+      }
+
+      config.baseURL = panelUrl;
       config.headers.Authorization = `Bearer ${this.configService.getOrThrow('REMNAWAVE_API_TOKEN')}`;
       return config;
     });
+  }
+
+  private squadUuid(): string {
+    return this.configService.getOrThrow<string>('REMNAWAVE_SQUAD_UUID');
   }
 
   async findUserByTelegramId(
@@ -73,7 +90,9 @@ export class RemnawaveService {
           telegramId: Number(telegramId),
           status: 'ACTIVE',
           expireAt: ExpirationDate,
-          activeInternalSquads: ['80e426f1-ebf8-4a35-a183-2b103a3ab796'],
+          // Был захардкожен в коде: при пересоздании сквада в панели выдача
+          // доступа ломалась молча, и починка требовала пересборки образа.
+          activeInternalSquads: [this.squadUuid()],
         },
       }),
     );

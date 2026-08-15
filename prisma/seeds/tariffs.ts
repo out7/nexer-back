@@ -56,12 +56,18 @@ export async function seedTariffs() {
   });
 }
 
-seedTariffs()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+// Запускаем только при прямом вызове (`bun run prisma/seeds/tariffs.ts`).
+// Раньше вызов стоял на верхнем уровне модуля: seed.ts импортировал файл,
+// сид отрабатывал сам собой, потом вызывался ещё раз из main(), причём
+// $disconnect() успевал сработать посередине. Спасал только skipDuplicates.
+if (require.main === module) {
+  seedTariffs()
+    .then(async () => {
+      await prisma.$disconnect();
+    })
+    .catch(async (e) => {
+      console.error(e);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+}
