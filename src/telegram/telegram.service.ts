@@ -1,6 +1,6 @@
 import { PreparedMessageIdDto } from '@/invoice/dto/prepared-message-id.dto';
 import { HttpService } from '@nestjs/axios';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
 import { firstValueFrom } from 'rxjs';
@@ -10,6 +10,8 @@ import { TelegramContext } from './interfaces/telegraf-context.interface';
 
 @Injectable()
 export class TelegramService {
+  private readonly logger = new Logger(TelegramService.name);
+
   constructor(
     @InjectBot() private readonly bot: Telegraf<TelegramContext>,
     private readonly configService: ConfigService,
@@ -90,7 +92,21 @@ export class TelegramService {
     }
   }
 
-  async sendMessage(telegramId: string, message: string) {
-    this.bot.telegram.sendMessage(telegramId, message);
+  /**
+   * Ошибку отправки глушим намеренно: пользователь мог заблокировать бота или
+   * не начинать с ним диалог. Раньше промис не ждали и не ловили — такой
+   * случай давал unhandled rejection, а в Node 18+ это падение процесса.
+   * Доставка сообщения не должна ронять оплату или истечение подписки.
+   */
+  async sendMessage(telegramId: string, message: string): Promise<boolean> {
+    try {
+      await this.bot.telegram.sendMessage(telegramId, message);
+      return true;
+    } catch (e) {
+      this.logger.warn(
+        `[TELEGRAM] Failed to send message to ${telegramId}: ${(e as Error).message}`,
+      );
+      return false;
+    }
   }
 }

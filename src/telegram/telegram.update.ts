@@ -3,6 +3,7 @@ import { CustomerService } from '@/customer/customer.service';
 import { PaymentService } from '@/payment/payment.service';
 import { ReferralService } from '@/referral/referral.service';
 import { SubscriptionService } from '@/subscription/subscription.service';
+import { TariffService } from '@/tariff/tariff.service';
 import { TelegramContext } from '@/telegram/interfaces/telegraf-context.interface';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -21,6 +22,7 @@ export class TelegramUpdate {
     private readonly customerService: CustomerService,
     private readonly referralService: ReferralService,
     private readonly paymentService: PaymentService,
+    private readonly tariffService: TariffService,
   ) {}
 
   // TODO: add beautiful message for start bot
@@ -86,7 +88,7 @@ export class TelegramUpdate {
           [
             Markup.button.webApp(
               '🌐 Открыть Mini App',
-              'https://app.nexervpn.run',
+              'https://app.nexervpn.com',
             ),
           ],
           [
@@ -98,10 +100,38 @@ export class TelegramUpdate {
     );
   }
 
+  /**
+   * Payload инвойса: `tariff:<code>:<timestamp>` — см. InvoiceService.
+   */
+  private parseTariffCode(payload: string | undefined): string | null {
+    const code = payload?.split(':')[1];
+    return code ? code : null;
+  }
+
   @On('pre_checkout_query')
   async onPayment(@Ctx() ctx: Context): Promise<void> {
+    const query = (ctx as any).preCheckoutQuery;
+    const code = this.parseTariffCode(query?.invoice_payload);
+
+    // Раньше подтверждали безусловно. Если тариф успели удалить или
+    // переименовать между выпуском ссылки и оплатой, деньги списывались за
+    // то, что мы потом не сможем выдать.
+    if (!code) {
+      await ctx.answerPreCheckoutQuery(false, 'Некорректный платёж');
+      return;
+    }
+
+    try {
+      await this.tariffService.findTariffByCode(code);
+    } catch {
+      this.logger.warn(`[TELEGRAM] Pre-checkout for unknown tariff: ${code}`);
+      await ctx.answerPreCheckoutQuery(false, 'Тариф больше недоступен');
+      return;
+    }
+
     await ctx.answerPreCheckoutQuery(true);
   }
+
   hasSuccessfulPayment(msg: any): msg is { successful_payment: any } {
     return !!msg && typeof msg === 'object' && 'successful_payment' in msg;
   }
@@ -126,10 +156,31 @@ export class TelegramUpdate {
         JSON.stringify(payment, null, 2),
       );
 
-      const period = payment.invoice_payload?.split(
-        ':',
-      )[1] as keyof typeof SUBSCRIPTION_PERIODS;
-      const days = SUBSCRIPTION_PERIODS[period];
+      const code = this.parseTariffCode(payment.invoice_payload);
+      const days = code ? SUBSCRIPTION_PERIODS[code] : undefined;
+
+      if (!code || !days) {
+        this.logger.error(
+          `[TELEGRAM] Unknown tariff in payload: ${payment.invoice_payload}`,
+        );
+        await ctx.reply(
+          'Оплата получена, но тариф распознать не удалось. Напишите в поддержку — разберёмся вручную.',
+        );
+        return;
+      }
+
+      // Сверка суммы: payload задаём мы, но платёж приходит извне. Если
+      // заплатили меньше цены тарифа — выдавать доступ нельзя.
+      const tariff = await this.tariffService.findTariffByCode(code);
+      if (payment.total_amount < tariff.priceStars) {
+        this.logger.error(
+          `[TELEGRAM] Amount mismatch for ${code}: paid=${payment.total_amount} expected=${tariff.priceStars}`,
+        );
+        await ctx.reply(
+          'Оплата получена, но сумма не совпала с тарифом. Напишите в поддержку.',
+        );
+        return;
+      }
 
       const customer = await this.customerService.findOneByTelegramId(
         user.id.toString(),
@@ -146,10 +197,14 @@ export class TelegramUpdate {
         method: 'telegram_stars',
       });
 
-      this.subscriptionService.upsertUserSubscription({
+      // Без await продление терялось молча: платёж записан, пользователю
+      // отрапортовано об успехе, а подписка не выдана.
+      await this.subscriptionService.upsertUserSubscription({
         telegramId: user.id.toString(),
-        period: period,
+        period: code,
         createdVia: 'paid',
+        platform: 'telegram_stars',
+        amount: payment.total_amount,
       });
 
       await ctx.reply(

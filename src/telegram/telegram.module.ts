@@ -2,6 +2,7 @@ import { CustomerModule } from '@/customer/customer.module';
 import { PaymentModule } from '@/payment/payment.module';
 import { ReferralModule } from '@/referral/referral.module';
 import { SubscriptionModule } from '@/subscription/subscription.module';
+import { TariffModule } from '@/tariff/tariff.module';
 import { TelegramUpdate } from '@/telegram/telegram.update';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -21,6 +22,12 @@ import { TelegramService } from './telegram.service';
             testEnv: configService.getOrThrow('TELEGRAM_TEST_ENV') === 'true',
           },
         },
+        // Локальный стенд без боевого токена: без этого Telegraf валится на
+        // getMe (401) и убивает весь процесс уже ПОСЛЕ успешного старта Nest —
+        // вместе с вебхуком оплат и Mini App. По умолчанию поведение прежнее.
+        ...(configService.get('TELEGRAM_DISABLE_BOT') === 'true'
+          ? { launchOptions: false as const }
+          : {}),
       }),
       inject: [ConfigService],
     }),
@@ -28,6 +35,7 @@ import { TelegramService } from './telegram.service';
     CustomerModule,
     ReferralModule,
     PaymentModule,
+    TariffModule,
     HttpModule,
   ],
   providers: [TelegramService, TelegramUpdate],
