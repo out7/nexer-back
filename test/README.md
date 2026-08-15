@@ -16,7 +16,7 @@ cd apps/nexer-back
 
 # 1. база
 docker compose -f test/docker-compose.yaml up -d
-export DATABASE_URL="postgresql://postgres:test@localhost:55432/nexer_test?schema=public"
+export DATABASE_URL="postgresql://postgres:test@localhost:54329/nexer_test?schema=public"
 bunx prisma migrate deploy
 
 # 2. проверки, которым приложение не нужно
