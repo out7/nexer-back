@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   CreateUserCommand,
-  GetUserByTelegramIdCommand,
+  GetUserByUsernameCommand,
   UpdateUserCommand,
 } from '@remnawave/backend-contract';
 import { firstValueFrom } from 'rxjs';
@@ -20,7 +20,7 @@ export class RemnawaveService {
     // модулю. Сейчас Nest даёт отдельный инстанс на каждый импорт HttpModule,
     // но полагаться на это опасно: TelegramModule импортирует его тоже, и
     // при изменении этой детали токен панели уехал бы в api.telegram.org
-    // вместе с подменённым baseURL. Условие ниже — страховка ровно от этого.
+    // с подменённым baseURL. Условие ниже — страховка ровно от этого.
     this.httpService.axiosRef.interceptors.request.use((config) => {
       const panelUrl =
         this.configService.getOrThrow<string>('REMNAWAVE_PANEL_URL');
@@ -40,24 +40,34 @@ export class RemnawaveService {
     return this.configService.getOrThrow<string>('REMNAWAVE_SQUAD_UUID');
   }
 
-  async findUserByTelegramId(
-    telegramId: string,
-  ): Promise<GetUserByTelegramIdCommand.Response['response'][0] | null> {
+  /**
+   * Имя пользователя в панели. Мы сами его задаём и по нему же ищем — в v3
+   * это единственный способ найти пользователя без хранения его id у себя:
+   * поиск по telegram id из API вырезан (был GetUserByTelegramIdCommand).
+   */
+  private username(telegramId: string): string {
+    return `customer-${telegramId}`;
+  }
+
+  /**
+   * Проверено против настоящей панели v3 (test/remnawave-v3.test.ts):
+   * by-username даёт 404 → null, если пользователя нет.
+   */
+  async findUserByTelegramId(telegramId: string) {
     try {
-      const userRaw = await firstValueFrom(
-        this.httpService.request<GetUserByTelegramIdCommand.Response>({
-          method: GetUserByTelegramIdCommand.endpointDetails.REQUEST_METHOD,
-          url: GetUserByTelegramIdCommand.url(telegramId),
+      const res = await firstValueFrom(
+        this.httpService.request<GetUserByUsernameCommand.Response>({
+          method: GetUserByUsernameCommand.endpointDetails.REQUEST_METHOD,
+          url: GetUserByUsernameCommand.url(this.username(telegramId)),
         }),
       );
-      const user = userRaw.data.response[0];
-      return user || null;
+      return res.data.response ?? null;
     } catch (err) {
       if (err?.response?.status === 404) {
         return null;
       }
       throw new Error(
-        `Failed to find user by Telegram ID (${telegramId}): ${err.message || err}`,
+        `Failed to find user by username (${this.username(telegramId)}): ${err.message || err}`,
       );
     }
   }
@@ -65,13 +75,15 @@ export class RemnawaveService {
   async activateVpnAccess(telegramId: string, ExpirationDate: Date) {
     const user = await this.findUserByTelegramId(telegramId);
 
+    // Существующий — продлеваем одним PATCH по username. В v2 здесь был поиск
+    // ради uuid и update по uuid; v3 принимает username напрямую.
     if (user) {
       const updatedUserRaw = await firstValueFrom(
         this.httpService.request<UpdateUserCommand.Response>({
           method: UpdateUserCommand.endpointDetails.REQUEST_METHOD,
           url: UpdateUserCommand.url,
           data: {
-            uuid: user.uuid,
+            username: this.username(telegramId),
             status: 'ACTIVE',
             expireAt: ExpirationDate,
           },
@@ -81,12 +93,13 @@ export class RemnawaveService {
       return updatedUserRaw.data;
     }
 
+    // Нового — создаём и зачисляем в сквад.
     const createdUserRaw = await firstValueFrom(
       this.httpService.request<CreateUserCommand.Response>({
         method: CreateUserCommand.endpointDetails.REQUEST_METHOD,
         url: CreateUserCommand.url,
         data: {
-          username: `customer-${telegramId}`,
+          username: this.username(telegramId),
           telegramId: Number(telegramId),
           status: 'ACTIVE',
           expireAt: ExpirationDate,
@@ -101,6 +114,8 @@ export class RemnawaveService {
   }
 
   async disableVpnAccess(telegramId: string) {
+    // Существование проверяем всё тем же by-username: слать DISABLED на
+    // отсутствующего смысла нет, а 404 из update ловить дороже.
     const user = await this.findUserByTelegramId(telegramId);
 
     if (user) {
@@ -109,7 +124,7 @@ export class RemnawaveService {
           method: UpdateUserCommand.endpointDetails.REQUEST_METHOD,
           url: UpdateUserCommand.url,
           data: {
-            uuid: user.uuid,
+            username: this.username(telegramId),
             status: 'DISABLED',
           },
         }),

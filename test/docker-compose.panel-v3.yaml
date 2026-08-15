@@ -1,0 +1,57 @@
+# Настоящая панель Remnawave v3 для проверки нового remnawave.service.ts.
+#
+# Смысл: код под v3 нельзя проверить против нашей боевой панели (она 2.7.4),
+# а выкатывать непроверенным — значит чинить на проде во время окна.
+# Здесь панель поднимается с нуля, с чистой БД, и по ней гоняются те же
+# вызовы, что делает бэкенд: найти пользователя, создать, продлить, отключить.
+services:
+  panel-pg:
+    image: postgres:17.5
+    container_name: v3-pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: remnawave
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  panel-redis:
+    image: valkey/valkey:8.0.2-alpine
+    container_name: v3-redis
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  panel:
+    image: remnawave/backend:3.2.3
+    container_name: v3-panel
+    depends_on:
+      panel-pg:
+        condition: service_healthy
+      panel-redis:
+        condition: service_healthy
+    environment:
+      APP_PORT: 3000
+      METRICS_PORT: 3001
+      # v3: JWT_AUTH_SECRET переименован в APP_SECRET,
+      # JWT_API_TOKENS_SECRET удалён.
+      APP_SECRET: stand-app-secret-stand-app-secret-0123456789
+      DATABASE_URL: postgresql://postgres:test@panel-pg:5432/remnawave
+      REDIS_HOST: panel-redis
+      REDIS_PORT: 6379
+      FRONT_END_DOMAIN: localhost
+      SUB_PUBLIC_DOMAIN: localhost/sub
+      METRICS_USER: metrics
+      METRICS_PASS: metrics
+      IS_TELEGRAM_NOTIFICATIONS_ENABLED: 'false'
+      TELEGRAM_OAUTH_ENABLED: 'false'
+      HWID_DEVICE_LIMIT_ENABLED: 'false'
+      BANDWIDTH_USAGE_NOTIFICATIONS_ENABLED: 'false'
+      WEBHOOK_ENABLED: 'false'
+    ports:
+      - '3100:3000'
