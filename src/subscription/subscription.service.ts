@@ -84,16 +84,20 @@ export class SubscriptionService {
       `[SUBSCRIPTION] ${isActive ? 'Extending' : 'Creating'} subscription: start=${startDate.toISOString()} end=${newEndDate.toISOString()}`,
     );
 
+    // Remnawave — ВНЕ транзакции. Интерактивная транзакция Prisma живёт
+    // 5 секунд по умолчанию: держать её открытой на время сетевого запроса
+    // значит ловить откаты при каждом торможении панели (и держать
+    // соединение пула всё это время).
+    const remnawaveCustomer = await this.remnawaveService.activateVpnAccess(
+      String(telegramId),
+      newEndDate,
+    );
+
+    this.logger.debug(
+      `[SUBSCRIPTION] Remnawave activated for ${remnawaveCustomer.response.username}, status=${remnawaveCustomer.response.status}`,
+    );
+
     const updatedCustomer = await this.prisma.$transaction(async (tx) => {
-      const remnawaveCustomer = await this.remnawaveService.activateVpnAccess(
-        String(telegramId),
-        newEndDate,
-      );
-
-      this.logger.debug(
-        `[SUBSCRIPTION] Remnawave activated for ${remnawaveCustomer.response.username}, status=${remnawaveCustomer.response.status}`,
-      );
-
       await tx.customerSubscription.upsert({
         where: { customerId: customer.id },
         update: {
@@ -191,23 +195,49 @@ export class SubscriptionService {
       throw new BadRequestException('Customer not found');
     }
 
+    // Списываем ПЕРВЫМ шагом и условно — это и есть захват блокировки.
+    // Раньше порядок был «прочитать → начислить → обнулить»: два параллельных
+    // запроса (двойной тап в мини-аппе) успевали прочитать одно и то же
+    // значение и начисляли дни дважды. Плюс если обнуление падало после
+    // начисления, дни можно было забирать бесконечно.
     const days = customer.unclaimedBonusDays ?? 0;
     if (days <= 0) {
       throw new BadRequestException('No unclaimed bonus days');
     }
 
-    const updatedCustomer = await this.upsertUserSubscription({
-      telegramId,
-      days,
-      createdVia: 'bonus',
-      log: true,
-    });
-
-    await this.prisma.customer.update({
-      where: { id: customer.id },
+    const claimed = await this.prisma.customer.updateMany({
+      where: { id: customer.id, unclaimedBonusDays: days },
       data: { unclaimedBonusDays: 0 },
     });
 
-    return updatedCustomer!;
+    if (claimed.count === 0) {
+      // Кто-то успел раньше — либо параллельный запрос, либо значение
+      // изменилось между чтением и списанием.
+      throw new BadRequestException('No unclaimed bonus days');
+    }
+
+    try {
+      const updatedCustomer = await this.upsertUserSubscription({
+        telegramId,
+        days,
+        createdVia: 'bonus',
+        log: true,
+      });
+
+      return updatedCustomer!;
+    } catch (e) {
+      // Дни уже списаны, а выдать их не вышло — возвращаем обратно, иначе
+      // пользователь теряет бонус из-за нашей ошибки.
+      await this.prisma.customer.update({
+        where: { id: customer.id },
+        data: { unclaimedBonusDays: { increment: days } },
+      });
+
+      this.logger.error(
+        `[SUBSCRIPTION] Bonus claim failed, ${days} day(s) returned to tgId=${telegramId}`,
+        e as Error,
+      );
+      throw e;
+    }
   }
 }

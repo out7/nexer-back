@@ -1,8 +1,14 @@
 import { ActivityLogLogger } from '@/activity-log/activity-log.logger';
 import { SubscriptionService } from '@/subscription/subscription.service';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { InitData } from '@telegram-apps/init-data-node';
 import { formatTelegramId } from '../customer/helpers/format-telegram-id.helper';
+import { normalizeLanguage } from '../customer/helpers/normalize-language.helper';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -11,6 +17,7 @@ export class CustomerService {
     private readonly prisma: PrismaService,
     private readonly subscriptionService: SubscriptionService,
     private readonly activityLogLogger: ActivityLogLogger,
+    private readonly configService: ConfigService,
   ) {}
 
   async findOrCreate(initData: InitData) {
@@ -22,12 +29,12 @@ export class CustomerService {
       where: { telegramId: initData.user.id },
       update: {
         username: initData.user.username ?? null,
-        language: initData.user.language_code,
+        language: normalizeLanguage(initData.user.language_code),
       },
       create: {
         telegramId: initData.user.id,
         username: initData.user.username,
-        language: initData.user.language_code ?? 'ru',
+        language: normalizeLanguage(initData.user.language_code),
         customerSubscription: {
           create: {},
         },
@@ -47,7 +54,7 @@ export class CustomerService {
       data: {
         telegramId: BigInt(params.telegramId),
         username: params.username ?? null,
-        language: params.language,
+        language: normalizeLanguage(params.language),
         referredById: params.referredById ?? null,
         customerSubscription: {
           create: {},
@@ -67,7 +74,7 @@ export class CustomerService {
       where: { telegramId: BigInt(params.telegramId) },
       data: {
         username: params.username ?? null,
-        language: params.language,
+        language: normalizeLanguage(params.language),
       },
     });
 
@@ -79,6 +86,10 @@ export class CustomerService {
       where: { telegramId: BigInt(telegramId) },
       include: { customerSubscription: true },
     });
+
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
 
     return formatTelegramId(customer);
   }
@@ -109,7 +120,7 @@ export class CustomerService {
   }
 
   async activateTrial(telegramId: string) {
-    let customer = await this.prisma.customer.findUnique({
+    const customer = await this.prisma.customer.findUnique({
       where: { telegramId: BigInt(telegramId) },
       include: { customerSubscription: true },
     });
@@ -120,6 +131,17 @@ export class CustomerService {
       throw new BadRequestException('Trial already used');
     }
 
+    // Проверки выше мало: два параллельных запроса оба её проходят и дают
+    // 6 дней вместо 3. Флаг ставим сразу и условно — выигрывает один.
+    const claimed = await this.prisma.customerSubscription.updateMany({
+      where: { customerId: customer.id, trialActivated: false },
+      data: { trialActivated: true },
+    });
+
+    if (claimed.count === 0) {
+      throw new BadRequestException('Trial already used');
+    }
+
     if (customer.referredById) {
       await this.prisma.referral.updateMany({
         where: { referredId: customer.id, status: 'inactive' },
@@ -127,13 +149,22 @@ export class CustomerService {
       });
     }
 
-    await this.subscriptionService.upsertUserSubscription({
-      telegramId,
-      days: 3,
-      period: 'trial_3d',
-      trialActivated: true,
-      createdVia: 'trial',
-    });
+    try {
+      await this.subscriptionService.upsertUserSubscription({
+        telegramId,
+        days: this.trialDurationDays(),
+        trialActivated: true,
+        createdVia: 'trial',
+      });
+    } catch (e) {
+      // Флаг уже выставлен, а дни не выданы — снимаем, иначе пользователь
+      // теряет триал из-за нашей ошибки.
+      await this.prisma.customerSubscription.updateMany({
+        where: { customerId: customer.id },
+        data: { trialActivated: false },
+      });
+      throw e;
+    }
 
     const updated = await this.prisma.customer.findUnique({
       where: { id: customer.id },
@@ -141,5 +172,16 @@ export class CustomerService {
     });
 
     return formatTelegramId(updated!);
+  }
+
+  private trialDurationDays(): number {
+    // Было захардкожено 3, при том что TRIAL_DURATION_DAYS лежит в окружении
+    // и никем не читался.
+    const days = Number.parseInt(
+      this.configService.get<string>('TRIAL_DURATION_DAYS') ?? '3',
+      10,
+    );
+
+    return Number.isFinite(days) && days > 0 ? days : 3;
   }
 }
