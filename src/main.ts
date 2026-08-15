@@ -42,7 +42,7 @@ function surviveTelegramLaunchFailure() {
     if (!isTelegramLaunch) throw reason;
 
     logger.error(
-      `Бот не запустился (${reason?.on?.method}): ${reason?.message}. ` +
+      `Бот не запустился (${method}): ${reason?.message}. ` +
         'HTTP API продолжает работать — вебхук оплат и Mini App живы, ' +
         'но команды бота и уведомления не работают, пока Telegram недоступен.',
     );
