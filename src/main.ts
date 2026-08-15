@@ -11,12 +11,47 @@ if (process.env.ENV_FILE) {
 }
 
 import { setupSwagger } from '@/utils/swagger.util';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { TelegramError } from 'telegraf';
 import { AppModule } from './app.module';
 
+/**
+ * Telegraf запускается в onApplicationBootstrap уже ПОСЛЕ того, как Nest
+ * поднялся, и ошибку getMe/launch бросает необработанным промисом — процесс
+ * падал целиком. Вместе с ботом при этом умирали вебхук оплат и Mini App,
+ * а при restart: always получался цикл перезапусков: недоступный на минуту
+ * Telegram выносил приём платежей.
+ *
+ * Гасим ТОЛЬКО эту ошибку и только громко: остальные необработанные
+ * отказы по-прежнему роняют процесс, иначе так и будут прятаться баги.
+ */
+function surviveTelegramLaunchFailure() {
+  const logger = new Logger('Bootstrap');
+
+  process.on('unhandledRejection', (reason: any) => {
+    // Именно instanceof: у TelegramError поле name равно "Error", а
+    // «TelegramError» в логе печатает Node по имени конструктора.
+    const method = (reason as { on?: { method?: string } })?.on?.method;
+    const isTelegramLaunch =
+      reason instanceof TelegramError &&
+      !!method &&
+      ['getMe', 'getUpdates', 'deleteWebhook'].includes(method);
+
+    if (!isTelegramLaunch) throw reason;
+
+    logger.error(
+      `Бот не запустился (${reason?.on?.method}): ${reason?.message}. ` +
+        'HTTP API продолжает работать — вебхук оплат и Mini App живы, ' +
+        'но команды бота и уведомления не работают, пока Telegram недоступен.',
+    );
+  });
+}
+
 async function bootstrap() {
+  surviveTelegramLaunchFailure();
+
   // rawBody нужен вебхуку Tribute: подпись считается от сырых байт тела,
   // пересобранный из объекта JSON для этого не годится.
   const app = await NestFactory.create(AppModule, { rawBody: true });

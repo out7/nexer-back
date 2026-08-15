@@ -11,6 +11,7 @@ import { TelegramModule } from '@/telegram/telegram.module';
 import { WebhookModule } from '@/webhook/webhook.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { validateEnv } from '@/config/env.validation';
 import { ReferralModule } from './referral/referral.module';
 import { PaymentModule } from './payment/payment.module';
 
@@ -21,6 +22,7 @@ import { PaymentModule } from './payment/payment.module';
       // ENV_FILE позволяет поднять локальный стенд, не перетирая боевой .env
       // (см. test/README.md). Без переменной поведение прежнее — читается .env.
       ...(process.env.ENV_FILE ? { envFilePath: process.env.ENV_FILE } : {}),
+      validate: validateEnv,
     }),
     PrismaModule,
     AuthModule,
