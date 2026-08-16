@@ -22,6 +22,7 @@ bunx prisma migrate deploy
 # 2. проверки, которым приложение не нужно
 bun run test/concurrency.test.ts     # гонки: бонусы, триал, идемпотентность
 bun run test/auth.test.ts            # подписи initData и вебхука
+bun run test/subscription-url.test.ts # сборка ссылки на подписку (даже без базы)
 
 # 3. проверки по HTTP — нужен стенд
 bun run test/mock-remnawave.ts &     # заглушка панели на :59999

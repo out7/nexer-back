@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { SubscriptionSource, SubscriptionStatus } from '@prisma/client';
-import { Exclude, Expose } from 'class-transformer';
+import { Exclude, Expose, Transform } from 'class-transformer';
+import { buildSubscriptionUrl } from '../../common/helpers/subscription-url';
 
 export class CustomerSubscriptionResponseDto {
   @ApiProperty({ description: 'Internal subscription ID (UUID)' })
@@ -41,10 +42,16 @@ export class CustomerSubscriptionResponseDto {
   createdVia: SubscriptionSource | null;
 
   @ApiProperty({
-    description: 'Manual VPN subscription URL (e.g. vmess://...)',
+    description:
+      'Subscription URL. Собирается на чтении из short_uuid и ' +
+      'SUBSCRIPTION_BASE_URL — в базе готовый URL не хранится, иначе он ' +
+      'протухает при смене домена подписки.',
+    // Без type фронтовый кодоген выводит Record<string, never> вместо string.
+    type: String,
     nullable: true,
   })
   @Expose()
+  @Transform(({ obj }) => buildSubscriptionUrl(obj.shortUuid, obj.subscriptionUrl))
   subscriptionUrl: string | null;
 
   @ApiProperty({

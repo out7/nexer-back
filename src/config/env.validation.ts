@@ -18,6 +18,10 @@ const REQUIRED = [
   'REMNAWAVE_PANEL_URL',
   'REMNAWAVE_API_TOKEN',
   'REMNAWAVE_SQUAD_UUID',
+  // Домен страницы подписки. Ссылка собирается из него на каждом чтении, а не
+  // хранится в базе: иначе переезд домена молча ломает выдачу у всех, кому
+  // доступ выдали раньше (см. common/helpers/subscription-url.ts).
+  'SUBSCRIPTION_BASE_URL',
   'TRBT_API_KEY',
   'REFERRAL_BONUS_DAYS',
 ] as const;
@@ -48,11 +52,11 @@ export function validateEnv(config: Record<string, unknown>) {
     }
   }
 
-  const panelUrl = config['REMNAWAVE_PANEL_URL'];
-  if (panelUrl && !/^https?:\/\//i.test(String(panelUrl))) {
-    problems.push(
-      `REMNAWAVE_PANEL_URL: ожидался абсолютный URL, получено "${panelUrl}"`,
-    );
+  for (const key of ['REMNAWAVE_PANEL_URL', 'SUBSCRIPTION_BASE_URL'] as const) {
+    const value = config[key];
+    if (value && !/^https?:\/\//i.test(String(value))) {
+      problems.push(`${key}: ожидался абсолютный URL, получено "${value}"`);
+    }
   }
 
   if (problems.length) {

@@ -106,6 +106,9 @@ export class SubscriptionService {
           endDate: newEndDate,
           createdVia: createdViaForUpdate,
           trialActivated: !!trialActivated || sub?.trialActivated || false,
+          // Ссылку наружу собирает DTO из shortUuid и SUBSCRIPTION_BASE_URL.
+          // URL панели пишем рядом как есть — только для диагностики.
+          shortUuid: remnawaveCustomer.response.shortUuid,
           subscriptionUrl: remnawaveCustomer.response.subscriptionUrl,
         },
         create: {
@@ -115,6 +118,7 @@ export class SubscriptionService {
           endDate: newEndDate,
           createdVia,
           trialActivated: !!trialActivated,
+          shortUuid: remnawaveCustomer.response.shortUuid,
           subscriptionUrl: remnawaveCustomer.response.subscriptionUrl,
         },
       });

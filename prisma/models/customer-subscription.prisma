@@ -17,6 +17,12 @@ model CustomerSubscription {
   startDate       DateTime?           @map("start_date")
   endDate         DateTime?           @map("end_date")
   createdVia      SubscriptionSource? @map("created_via")
+  // shortUuid — то, из чего собирается ссылка на подписку. Домен берётся из
+  // SUBSCRIPTION_BASE_URL на чтении: хранить URL целиком значит протухнуть
+  // при первом же переезде домена (см. common/helpers/subscription-url.ts).
+  shortUuid       String?             @map("short_uuid")
+  // Ответ панели как есть — для диагностики и как запасной источник
+  // shortUuid у строк, выданных до появления колонки выше.
   subscriptionUrl String?             @map("subscription_url")
   trialActivated  Boolean             @default(false) @map("trial_activated")
   createdAt       DateTime            @default(now()) @map("created_at")
